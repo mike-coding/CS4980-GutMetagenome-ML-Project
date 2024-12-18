@@ -5,16 +5,8 @@ Training classification models on human gut metagenomic signatures
 Instructions on using the scripts, etc to go here
 
 ### Dependencies
-This project uses the following Python libraries:
-- Pandas
-- Requests
-- BeautifulSoup4
-- Scikit-Learn
-- NumPy
-- Matplotlib
-- Seaborn
-
-To run the scripts included in this project, you'll want to make sure your Python distribution has these modules installed. This can be accomplished through running the following through your command line:
+This project was developed in Python 3.11.0.
+To run the scripts in this repository, you'll want to make sure you've installed Python and the modules listed below. This can be accomplished by running the following through your command line:
 ```
 pip install pandas
 pip install requests
@@ -38,7 +30,6 @@ These two studies form the foundation for my project:
 #### 2. Angelova IY, Kovtun AS, Averina OV, Koshenko TA, Danilenko VN. **Unveiling the Connection between Microbiota and Depressive Disorder through Machine Learning.** International Journal of Molecular Sciences. 2023; 24(22):16459. https://doi.org/10.3390/ijms242216459
 - Attempted to predict depression using models trained on the _metagenomic signatures_ collected above
 - Tested logistic regression, random forest, and YOLOv8 CNN
-<br>
 <br>
 
 ## Project Goals
