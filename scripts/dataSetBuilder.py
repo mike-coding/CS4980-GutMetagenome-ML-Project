@@ -50,7 +50,7 @@ def build_presplit_from_study1():
             for index, row in transposed_df.iterrows():
                 full_ID = row['index'].split('_')
                 if len(full_ID)<2:
-                    if class_attribute=='HC':
+                    if class_attribute=='HC': #hack to get header
                         setDict[setSplit].append(row.to_dict())
                     continue
                 current_class = full_ID[0]
