@@ -17,6 +17,7 @@ These two studies form the foundation for my project:
 <br>
 <br>
 <br>
+
 ## Project Goals
 
 - Determine if logistic regression or random forest models can be more performant than was reported in study #2
