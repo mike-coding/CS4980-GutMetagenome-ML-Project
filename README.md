@@ -16,7 +16,6 @@ These two studies form the foundation for my project:
 - Tested logistic regression, random forest, and YOLOv8 CNN
 <br>
 <br>
-<br>
 
 ## Project Goals
 
