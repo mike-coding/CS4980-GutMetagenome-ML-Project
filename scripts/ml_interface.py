@@ -16,6 +16,7 @@ from sklearn.metrics import (
     accuracy_score, confusion_matrix, classification_report, roc_curve, auc
 )
 from sklearn.base import clone
+from csv_preprocessor import DataPreprocessor
 
 class MLInterface:
     """
@@ -32,67 +33,31 @@ class MLInterface:
     def __init__(self, target_column: str = 'PwD'):
         self.target_column = target_column
         self.data: Dict[str, Dict[str, pd.DataFrame]] = {}  # e.g. {'train': {'X':..., 'Y':...}, 'test':{'X':...,'Y':...}}
-        self.full_data: Optional[pd.DataFrame] = None
         self.model = None
-        self.classes_: List[Any] = []
+        self.dataPreprocessor=DataPreprocessor()
+        self.random_state=42
 
     # ============================
     # Data Loading
     # ============================
-    def load_data(
-        self, 
-        filepath: str, 
-        mode: str = 'split', 
-        test_size: float = 0.3, 
-        random_state: int = 42
-    ):
+    def load_experiment_set(self, study: int = 2, experiment_type: str = 'classic'):
         """
-        Loads the dataset. Depending on the mode:
-        - 'split': Split into train/test using train_test_split
-        - 'full': Load full dataset (X,Y) without splitting
-        - 'presplit': Load pre-split files (e.g. train_master.csv & test_master.csv)
-        
+        Load all available sets (full, test, train) for the given experiment type and study.
         Parameters:
-        - filepath: path to the csv if mode='full' or 'split'
-        - mode: One of ['split', 'full', 'presplit']
-        - test_size: only used if mode='split'
+        - study (int): The study number (1 or 2). Defaults to 2.
+        - experiment_type (str): The experiment type (e.g., 'classic', 'genus', 'classic_demo', genus_demo', 'yolo', 'demo'). Defaults to 'classic'.
         """
-        if mode == 'full':
-            df = pd.read_csv(filepath)
+        self.data = {}
+        dataframes=self.dataPreprocessor.get_experiment(experiment_type,study)
+        for _set, df in dataframes.items():
+            if self.target_column not in df.columns:
+                print(f"Warning: {self.target_column} not in {experiment_type}/{_set} data.")
+                continue
             X = df.drop(self.target_column, axis=1)
             Y = df[self.target_column]
-            self.full_data = df
-            self.data = {'full': {'X': X, 'Y': Y}}
-        
-        elif mode == 'split':
-            df = pd.read_csv(filepath)
-            X = df.drop(self.target_column, axis=1)
-            Y = df[self.target_column]
-            X_train, X_test, Y_train, Y_test = train_test_split(
-                X, Y, test_size=test_size, random_state=random_state, stratify=Y
-            )
-            self.data = {
-                'train': {'X': X_train, 'Y': Y_train},
-                'test': {'X': X_test, 'Y': Y_test}
-            }
-
-        elif mode == 'presplit':
-            # Expecting files named 'train_master.csv' and 'test_master.csv' or a pattern thereof
-            # If custom naming is needed, adjust accordingly.
-            train_path = 'train_master.csv' if filepath == '' else f'{filepath}_train_master.csv'
-            test_path = 'test_master.csv' if filepath == '' else f'{filepath}_test_master.csv'
-
-            df_train = pd.read_csv(train_path)
-            df_test = pd.read_csv(test_path)
-            self.data = {
-                'train': {'X': df_train.drop(self.target_column, axis=1), 'Y': df_train[self.target_column]},
-                'test': {'X': df_test.drop(self.target_column, axis=1), 'Y': df_test[self.target_column]}
-            }
-        else:
-            raise ValueError("Mode must be one of ['split', 'full', 'presplit']")
-
-        print(f"Data loaded with mode={mode}. Keys in self.data: {list(self.data.keys())}")
-
+            self.data[_set] = {'X': X, 'Y': Y}
+        print(f"Data loaded for study{study}/{experiment_type}. Available sets: {list(self.data.keys())}")
+    
     # ============================
     # Model Selection
     # ============================
@@ -102,11 +67,11 @@ class MLInterface:
         Additional model_params can be passed directly to the constructor.
         """
         if model_type == 'lg':
-            self.model = LogisticRegression(random_state=42, **model_params)
+            self.model = LogisticRegression(random_state=self.random_state, **model_params)
         elif model_type == 'rf':
-            self.model = RandomForestClassifier(random_state=42, n_jobs=-1, **model_params)
+            self.model = RandomForestClassifier(random_state=self.random_state, n_jobs=-1, **model_params)
         elif model_type == 'svm':
-            self.model = SVC(probability=True, random_state=42, **model_params)
+            self.model = SVC(probability=True, random_state=self.random_state, **model_params)
         else:
             raise ValueError("model_type must be one of ['lg', 'rf', 'svm']")
 
@@ -127,7 +92,6 @@ class MLInterface:
         X = self.data[dataset]['X']
         Y = self.data[dataset]['Y']
         self.model.fit(X, Y)
-        self.classes_ = sorted(Y.unique())
         print(f"Model trained on {dataset} set with {X.shape[0]} samples and {X.shape[1]} features.")
 
     # ============================
@@ -137,7 +101,7 @@ class MLInterface:
         self, 
         method: str = 'holdOut', 
         dataset: str = 'test', 
-        n_splits: int = 5,
+        n_splits: int = 10,
         produce_classification_report: bool = True,
         produce_roc_curve_plot: bool = True,
         produce_confusion_matrix_plot: bool = True
@@ -166,7 +130,7 @@ class MLInterface:
             results = self._compute_metrics(Y_test, Y_pred, Y_prob)
             self._report_results(results, produce_classification_report, produce_roc_curve_plot, produce_confusion_matrix_plot)
 
-        elif method == 'crossValidation':
+        elif method == 'cv':
             if 'full' not in self.data:
                 raise ValueError("Full data not loaded. Cannot do cross-validation.")
             X = self.data['full']['X']
@@ -174,7 +138,7 @@ class MLInterface:
             results = self._cross_validate_model(X, Y, n_splits=n_splits)
             self._report_results(results, produce_classification_report, produce_roc_curve_plot, produce_confusion_matrix_plot)
         else:
-            raise ValueError("method must be 'holdOut' or 'crossValidation'")
+            raise ValueError("method must be 'holdOut' or 'cv'")
 
     def _compute_metrics(self, Y_test, Y_pred, Y_prob=None):
         accuracy = accuracy_score(Y_test, Y_pred)
@@ -312,9 +276,9 @@ class MLInterface:
         
         base_model = clone(self.model)
         if method == 'bagging':
-            ensemble_model = BaggingClassifier(base_estimator=base_model, n_estimators=n_estimators, random_state=42, n_jobs=-1, **kwargs)
+            ensemble_model = BaggingClassifier(estimator=base_model, n_estimators=n_estimators, random_state=42, n_jobs=-1, **kwargs)
         elif method == 'boosting':
-            ensemble_model = AdaBoostClassifier(base_estimator=base_model, n_estimators=n_estimators, random_state=42, **kwargs)
+            ensemble_model = AdaBoostClassifier(estimator=base_model, n_estimators=n_estimators, random_state=42, **kwargs)
         else:
             raise ValueError("method must be 'bagging' or 'boosting'")
 
@@ -330,4 +294,8 @@ class MLInterface:
             print(f"Current model wrapped with {method}, but no training data found. Train again using train_model().")
 
 if __name__ == "__main__":
-    pass
+    interface=MLInterface()
+    interface.load_experiment_set(2,'demo')
+    interface.select_model('svm')
+    #interface.bag_or_boost_current_model()
+    interface.evaluate_model('cv')
