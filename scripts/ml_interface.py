@@ -17,6 +17,7 @@ from sklearn.metrics import (
 )
 from sklearn.base import clone
 from csv_preprocessor import DataPreprocessor
+from sklearn.neighbors import KNeighborsClassifier
 
 class MLInterface:
     """
@@ -72,6 +73,8 @@ class MLInterface:
             self.model = RandomForestClassifier(random_state=self.random_state, n_jobs=-1, **model_params)
         elif model_type == 'svm':
             self.model = SVC(probability=True, random_state=self.random_state, **model_params)
+        elif model_type =='knn':
+            self.model = KNeighborsClassifier(n_jobs=-1)
         else:
             raise ValueError("model_type must be one of ['lg', 'rf', 'svm']")
 
@@ -295,7 +298,7 @@ class MLInterface:
 
 if __name__ == "__main__":
     interface=MLInterface()
-    interface.load_experiment_set(2,'demo')
+    interface.load_experiment_set(2,'classic')
     interface.select_model('svm')
     #interface.bag_or_boost_current_model()
     interface.evaluate_model('cv')
