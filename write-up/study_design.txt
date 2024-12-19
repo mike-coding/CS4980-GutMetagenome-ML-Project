@@ -52,7 +52,6 @@ STUDY_DESIGN:
 
     d. Statistical comparison
 
-
 4. Other Experiments
     a. Classification boundaries
         * Visualizations
