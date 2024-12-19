@@ -40,7 +40,6 @@ class Processor:
         processor.process_set(study=2, split=True, useSynthetic=True)
         processor.process_set(study=2,addDemoData=True)
         processor.process_set(study=2,split=True,addDemoData=True)
-        processor.process_set(study=2, split=True, useSynthetic=True,addDemoData=True)
 
     def process_set(self, **kwargs):
         """
@@ -52,7 +51,8 @@ class Processor:
             - addDemoData (bool, optional): include bioproject age & sex per subject. Default False
         """
         study=kwargs.get('study', 2)
-        print(f'\nPreprocessing dataset for study {study}\n======================================')
+        print(f'\nPreprocessing dataset for study {study}\n====================================')
+        self.report_kwargs()
         if kwargs.get('addDemoData',False):
             self.build_demographic_data()
         if study==1:
@@ -65,9 +65,6 @@ class Processor:
         split= kwargs.get('split',False)
         useSpecies=kwargs.get('useSpecies',True)
         addDemoData=kwargs.get('addDemoData',False)
-        print(f'splitting: {split}')
-        print(f'using species: {useSpecies}')
-        print(f'adding demo data: {addDemoData}')
         self.load_sheets('study1')
         #get genus/species-level sheet
         working_df=self.sheetDict['study1'][f'Supplementary Table S6{"b" if useSpecies else "a"}']
@@ -79,13 +76,11 @@ class Processor:
         if not split:
             working_df.iloc[0,0]='PwD'
             working_df.iloc[1:,0]=working_df.iloc[1:,0].apply(lambda x: 0 if 'HC' in str(x) else 1)
-            #working_df.to_csv(self.write_csv('study1','full',**kwargs),index=False, header=False)
             self.write_csv(working_df,'full', False, **kwargs)
         else:
             frames=self.split_frame(working_df)
             for _set, df in frames.items():
                 self.write_csv(df,_set,False,**kwargs)
-                #df.to_csv(self.write_csv('study1',_set,**kwargs), index=False, header=False)
 
     def split_frame(self, working_df):
         self.load_classic_splits()
@@ -124,30 +119,37 @@ class Processor:
         addDemoData=kwargs.get('addDemoData',False)
         sheet_block = 'study2_classic' if not useSynthetic else 'study2_yolo'
         self.load_sheets(sheet_block)
-        if split: #get the IDs for each split if requested
+        if split:
             for _set in ['train', 'test']:
                 df= self.concat_frames(sheet_block, _set, addDemoData)
-                #df.to_csv(self.write_csv(sheet_block,_set=_set,**kwargs),index=False)
                 self.write_csv(df, _set, **kwargs)
         else: # fullset
             df = self.concat_frames(sheet_block,"_",addDemoData)
-            #df.to_csv(self.write_csv(sheet_block,_set='full',**kwargs),index=False)
             self.write_csv(df,'full',**kwargs)
 
-    def write_csv(self, df, _set, useHeaders=True, **kwargs):
-        sheet_block='/study'
-        sheet_block+=str(kwargs.get('study',2))
-        sheet_block+= '_yolo' if kwargs.get('useSynthetic',False) else '_classic'
-        sub_directory= 'study1_sets' if '1' in sheet_block else 'study2_sets'
-        sub_directory_path= self.path+'processed/'+sub_directory
-        os.makedirs(sub_directory_path, exist_ok=True)
-        csv_string=self.path+'processed/'+sub_directory+sheet_block+'_'+_set
+    def write_csv(self, df, _set, useHeaders=True, **kwargs): 
+        #build dataset name from parameters
+        #create subdirectories where necessary
+        #write dataFrame to csv in respective directory
+        study_number = kwargs.get('study',2)
+        csv_name='study'
+        csv_name+=str(study_number)
+        csv_path=self.path+'processed/'+csv_name+'_sets/'
+        if study_number==2:
+            csv_name+= '_yolo' if kwargs.get('useSynthetic',False) else '_classic'
         if not kwargs.get('useSpecies',True):
-            csv_string+='_genus'
+            csv_name+='_genus'
+        csv_name=csv_name+'_'+_set
         if kwargs.get('addDemoData',False):
-            csv_string+='_demographic'
-        csv_string+='.csv'
-        df.to_csv(csv_string,index=False,header=useHeaders)
+            csv_name+='_demo'
+            csv_path+='demographic_features/'
+        os.makedirs(csv_path, exist_ok=True)
+        full_csv_string= csv_path+csv_name+'.csv'
+        df.to_csv(full_csv_string,index=False,header=useHeaders)
+
+    def report_kwargs(self, **kwargs):
+        for kwarg in kwargs.items():
+            print(f'{kwarg[0]}: {kwarg[1]}')
 
     def concat_frames(self, sheet_block, _set, addDemoData):
         frames= [self.sheetDict[sheet_block][sheet] for sheet in self.sheetDict[sheet_block].keys() if _set in sheet]
@@ -155,6 +157,7 @@ class Processor:
         df.fillna(0, inplace=True)
         if addDemoData:
             df = self.join_demo_data(df)
+        df.rename(columns={df.columns[0]:'PwD'}, inplace=True)
         df.iloc[0:,0]=df.iloc[0:,0].apply(lambda x: 0 if 'HC' in str(x) else 1)
         return df
 
@@ -162,7 +165,7 @@ class Processor:
         right_target=df.columns[0]
         df = self.demographicData.merge(df, right_on=right_target, left_on='ID', how='right')
         df=df.drop(df.columns[3],axis=1)
-        if right_target=='index': #apply fixes for frames not using header
+        if right_target=='index': #apply fixes for frames not using header (study 1)
             for pair in [(0,'PwD'),(1,'sex'),(2,'age')]:
                 df.iloc[0,pair[0]] = pair[1]
             df.rename(columns={'ID': 'index'}, inplace=True)
