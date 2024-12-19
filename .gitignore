@@ -1,2 +1,3 @@
-/datasets/processed/*
-/datasets/old_processed_output/*
+/data/processed/*
+/data/old_processed_output/*
+/scripts/__pycache__

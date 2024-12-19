@@ -1,0 +1,84 @@
+RandomForestClassifier_experiment_on_study1
+========================================================
+========================================================
+
+Experiment: classic
+--------------------------------------------------------
+Accuracy: 0.7702702702702703
+ROC_AUC: 0.8220029239766082
+
+              precision    recall  f1-score   support
+
+           0       0.73      0.87      0.80        38
+           1       0.83      0.67      0.74        36
+
+    accuracy                           0.77        74
+   macro avg       0.78      0.77      0.77        74
+weighted avg       0.78      0.77      0.77        74
+
+Confusion matrix:
+[[33  5]
+ [12 24]]
+
+
+
+Experiment: classic_demo
+--------------------------------------------------------
+Accuracy: 0.6891891891891891
+ROC_AUC: 0.8183479532163742
+
+              precision    recall  f1-score   support
+
+           0       0.67      0.76      0.72        38
+           1       0.71      0.61      0.66        36
+
+    accuracy                           0.69        74
+   macro avg       0.69      0.69      0.69        74
+weighted avg       0.69      0.69      0.69        74
+
+Confusion matrix:
+[[29  9]
+ [14 22]]
+
+
+
+Experiment: genus
+--------------------------------------------------------
+Accuracy: 0.7567567567567568
+ROC_AUC: 0.7777777777777778
+
+              precision    recall  f1-score   support
+
+           0       0.74      0.82      0.78        38
+           1       0.78      0.69      0.74        36
+
+    accuracy                           0.76        74
+   macro avg       0.76      0.76      0.76        74
+weighted avg       0.76      0.76      0.76        74
+
+Confusion matrix:
+[[31  7]
+ [11 25]]
+
+
+
+Experiment: genus_demo
+--------------------------------------------------------
+Accuracy: 0.7567567567567568
+ROC_AUC: 0.7989766081871345
+
+              precision    recall  f1-score   support
+
+           0       0.75      0.79      0.77        38
+           1       0.76      0.72      0.74        36
+
+    accuracy                           0.76        74
+   macro avg       0.76      0.76      0.76        74
+weighted avg       0.76      0.76      0.76        74
+
+Confusion matrix:
+[[30  8]
+ [10 26]]
+
+
+

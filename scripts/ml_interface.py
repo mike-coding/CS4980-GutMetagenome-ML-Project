@@ -21,21 +21,21 @@ from sklearn.neighbors import KNeighborsClassifier
 
 class MLInterface:
     """
-    A flexible machine learning interface class that:
-    - Loads data (split, pre-split, or full)
-    - Selects and configures models (Logistic Regression, Random Forest, SVM)
-    - Trains the chosen model
-    - Evaluates model performance (hold-out, cross-validation)
-    - Generates evaluation reports and plots
-    - Performs grid search for hyperparameter tuning
-    - Applies bagging/boosting to the current model
+    - Load datasets via dataPreprocessor.get_experiment()
+    - Select and configure models (Logistic Regression, Random Forest, SVM, KNN)
+    - Train selected model
+    - Evaluate model performance (single hold-out, K-fold cross-validation)
+    - Generate evaluation reports, plots
+    - Perform grid search for hyperparameter tuning
+    - Apply bagging/boosting to selected model
     """
-
     def __init__(self, target_column: str = 'PwD'):
         self.target_column = target_column
         self.data: Dict[str, Dict[str, pd.DataFrame]] = {}  # e.g. {'train': {'X':..., 'Y':...}, 'test':{'X':...,'Y':...}}
         self.model = None
         self.dataPreprocessor=DataPreprocessor()
+        self.path=self.dataPreprocessor.get_data_path()
+        self.results_path = os.path.join(self.path,'..', 'results')
         self.random_state=42
 
     # ============================
@@ -105,9 +105,10 @@ class MLInterface:
         method: str = 'holdOut', 
         dataset: str = 'test', 
         n_splits: int = 10,
-        produce_classification_report: bool = True,
-        produce_roc_curve_plot: bool = True,
-        produce_confusion_matrix_plot: bool = True
+        gen_cr: bool = True,
+        gen_roc: bool = True,
+        gen_cm: bool = True,
+        suppress_report: bool = False
     ):
         """
         Evaluate the model using the specified method:
@@ -118,6 +119,9 @@ class MLInterface:
         - method: 'holdOut' or 'crossValidation'
         - dataset: dataset key to use if holdOut
         - n_splits: for cross-validation
+        - gen_cr: whether the function prints a classification report
+        - gen_roc: whether the function plots a ROC Cruve
+        - gen_cm: whether the function plots a confusion matrix
         """
         if self.model is None:
             raise ValueError("No model selected or trained.")
@@ -131,15 +135,18 @@ class MLInterface:
             Y_prob = self.model.predict_proba(X_test)[:, 1] if hasattr(self.model, "predict_proba") else None
             
             results = self._compute_metrics(Y_test, Y_pred, Y_prob)
-            self._report_results(results, produce_classification_report, produce_roc_curve_plot, produce_confusion_matrix_plot)
+            self._report_results(results, gen_cr, gen_roc, gen_cm)
 
         elif method == 'cv':
             if 'full' not in self.data:
-                raise ValueError("Full data not loaded. Cannot do cross-validation.")
+                print("[ERROR]: No full data set. Cannot do cross-validation.")
+                return self._generate_blank_results()
             X = self.data['full']['X']
             Y = self.data['full']['Y']
             results = self._cross_validate_model(X, Y, n_splits=n_splits)
-            self._report_results(results, produce_classification_report, produce_roc_curve_plot, produce_confusion_matrix_plot)
+            if not suppress_report:
+                self._report_results(results, gen_cr, gen_roc, gen_cm)
+            return results
         else:
             raise ValueError("method must be 'holdOut' or 'cv'")
 
@@ -161,6 +168,17 @@ class MLInterface:
             'fpr': fpr,
             'tpr': tpr,
             'classes': sorted(Y_test.unique())
+        }
+
+    def _generate_blank_results(self):
+        return {
+            'accuracy': '',
+            'cm': '',
+            'cr': '',
+            'roc_auc': '',
+            'fpr': '',
+            'tpr': '',
+            'classes': ''
         }
 
     def _report_results(self, results, show_cr, show_roc, show_cm):
@@ -200,6 +218,26 @@ class MLInterface:
         all_preds = pd.Series(all_preds)
 
         return self._compute_metrics(all_truths, all_preds, all_probs if len(all_probs)==len(all_truths) else None)
+
+    def perform_study_level_experiment(self, study, model):
+        if type(study)!=int:
+            print(f'[ERROR]: Invalid study: {study}\nExpected integer: 1, or 2')
+            return
+        self.select_model(model)
+        name = f'{type(self.model).__name__}_experiment_on_study{study}'
+        resultLog=f'{name}\n========================================================\n========================================================\n\n'
+        print(f'Running experiment: {name}')
+        for experiment_type in self.dataPreprocessor.valid_experiments[int(study)]:
+            self.load_experiment_set(study,experiment_type)
+            results = self.evaluate_model('cv',suppress_report=True)
+            if len(str(results['accuracy']))<1:
+                continue
+            resultLog = ''.join([resultLog, f"Experiment: {experiment_type}\n--------------------------------------------------------\n", f'Accuracy: {str(results["accuracy"])}\n', f'ROC_AUC: {str(results["roc_auc"])}\n\n', f'{results["cr"]}\n', f'Confusion matrix:\n{str(results["cm"])}\n\n\n\n'])
+        output_file = os.path.join(self.results_path, f"{name}.txt")
+        with open(output_file, 'w') as f:
+            f.write(resultLog)
+        print(resultLog[:-3])
+        print(f"Results saved to {output_file}")
 
     # ============================
     # Plotting Utilities
@@ -298,7 +336,4 @@ class MLInterface:
 
 if __name__ == "__main__":
     interface=MLInterface()
-    interface.load_experiment_set(2,'classic')
-    interface.select_model('svm')
-    #interface.bag_or_boost_current_model()
-    interface.evaluate_model('cv')
+    interface.perform_study_level_experiment(1,'svm')

@@ -5,8 +5,9 @@ import xml.etree.ElementTree as et
 
 class DataPreprocessor:
     def __init__(self):
-        self.path = self.get_wd_path()
+        self.path = self.get_data_path()
         self.classes=['HC','PwD']
+        self.valid_experiments={1:['classic', 'classic_demo','genus','genus_demo'],2:['classic', 'demo', 'yolo']}
         self.sheetDict={'study1':{'loaded':False,
                                   'Supplementary Table S6a':None, 
                                   'Supplementary Table S6b':None}, 
@@ -327,8 +328,12 @@ class DataPreprocessor:
             dict: { 'full': df_full, 'test': df_test, 'train': df_train } 
                   depending on availability.
         """
+        
         if type(study)!=int:
             print(f'[ERROR] Attempted to load experiment with invalid study: {study}')
+            quit()
+        elif experiment_type not in self.valid_experiments[study]:
+            print(f'[ERROR] Attempted to load experiment with invalid experiment: {experiment_type}')
             quit()
         kwargs = self.experiment_type_to_kwargs(study, experiment_type)
         kwargs['experiment_type'] = experiment_type
@@ -420,11 +425,11 @@ class DataPreprocessor:
         built_sets = receipt_data[study_key][experiment_type]
         return all(s in built_sets for s in required_sets)
 
-    def get_wd_path(self):
+    def get_data_path(self):
         script_dir = os.path.dirname(os.path.realpath(__file__))
         project_root = os.path.abspath(os.path.join(script_dir, '..'))
-        datasets_abs_path = os.path.join(project_root, 'datasets')
-        return datasets_abs_path + os.sep
+        data_abs_path = os.path.join(project_root, 'data')
+        return data_abs_path + os.sep
 
 
 if __name__ == "__main__":

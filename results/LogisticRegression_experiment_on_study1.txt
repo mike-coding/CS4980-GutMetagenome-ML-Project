@@ -1,0 +1,84 @@
+LogisticRegression_experiment_on_study1
+========================================================
+========================================================
+
+Experiment: classic
+--------------------------------------------------------
+Accuracy: 0.7837837837837838
+ROC_AUC: 0.8070175438596493
+
+              precision    recall  f1-score   support
+
+           0       0.76      0.84      0.80        38
+           1       0.81      0.72      0.76        36
+
+    accuracy                           0.78        74
+   macro avg       0.79      0.78      0.78        74
+weighted avg       0.79      0.78      0.78        74
+
+Confusion matrix:
+[[32  6]
+ [10 26]]
+
+
+
+Experiment: classic_demo
+--------------------------------------------------------
+Accuracy: 0.7432432432432432
+ROC_AUC: 0.7909356725146198
+
+              precision    recall  f1-score   support
+
+           0       0.74      0.76      0.75        38
+           1       0.74      0.72      0.73        36
+
+    accuracy                           0.74        74
+   macro avg       0.74      0.74      0.74        74
+weighted avg       0.74      0.74      0.74        74
+
+Confusion matrix:
+[[29  9]
+ [10 26]]
+
+
+
+Experiment: genus
+--------------------------------------------------------
+Accuracy: 0.7432432432432432
+ROC_AUC: 0.7726608187134504
+
+              precision    recall  f1-score   support
+
+           0       0.73      0.79      0.76        38
+           1       0.76      0.69      0.72        36
+
+    accuracy                           0.74        74
+   macro avg       0.74      0.74      0.74        74
+weighted avg       0.74      0.74      0.74        74
+
+Confusion matrix:
+[[30  8]
+ [11 25]]
+
+
+
+Experiment: genus_demo
+--------------------------------------------------------
+Accuracy: 0.7432432432432432
+ROC_AUC: 0.7595029239766081
+
+              precision    recall  f1-score   support
+
+           0       0.72      0.82      0.77        38
+           1       0.77      0.67      0.72        36
+
+    accuracy                           0.74        74
+   macro avg       0.75      0.74      0.74        74
+weighted avg       0.75      0.74      0.74        74
+
+Confusion matrix:
+[[31  7]
+ [12 24]]
+
+
+
