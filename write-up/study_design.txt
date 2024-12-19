@@ -12,18 +12,7 @@ STUDY_DESIGN:
         * 10-Fold cross-validation, original parameters
         * 10-Fold cross-validation, grid search for optimal parameters
 
-2. YOLO Comparison: Using Synthetic Data
-    a. Logistic regression with:
-        * original dataset split, 
-        * grid search optimal parameters
-
-    b. Random forest with:
-        * original dataset split, 
-        * grid search optimal parameters
-
-    c. Statistical comparison
-
-3. Support Vector Machine Exploration
+2. Support Vector Machine Exploration
     a. SVC: RBF Kernel
         * original dataset split
         * 10-fold cross validation
@@ -41,6 +30,28 @@ STUDY_DESIGN:
         * 10-fold cross validation
         * 10-fold cross validation, grid search
         * YoloSet: original dataset split, optimal grid search results
+
+3. YOLO Comparison: Using Synthetic Data
+    a. Logistic regression with:
+        * original dataset split, 
+        * grid search optimal parameters
+            > reuse part 1 optimal parameters
+            > get optimal parameters for synthetic set
+
+    b. Random forest with:
+        * original dataset split, 
+        * grid search optimal parameters
+            > reuse part 1 optimal parameters
+            > get optimal parameters for synthetic set
+
+    c. SVM - best performing
+        * original dataset split, 
+        * grid search optimal parameters
+            > reuse part 1 optimal parameters
+            > get optimal parameters for synthetic set
+
+    d. Statistical comparison
+
 
 4. Other Experiments
     a. Classification boundaries

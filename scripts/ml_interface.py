@@ -70,6 +70,8 @@ class MLInterface:
         Select the model type: 'lg' for LogisticRegression, 'rf' for RandomForest, 'svm' for SVC.
         Additional model_params can be passed directly to the constructor.
         """
+        model_params.pop('random_state', None)
+        model_params.pop('n_jobs', None)
         if model_type == 'lg' or model_type == 'LogisticRegression':
             self.model = LogisticRegression(random_state=self.random_state, **model_params)
         elif model_type == 'rf'or model_type == 'RandomForestClassifier':
@@ -84,7 +86,8 @@ class MLInterface:
         print(f"Model selected: {self.model}")
 
     def get_model_name(self):
-        return type(self.model).__name__
+        name= type(self.model).__name__
+        return name
     
     # ============================
     # Training
@@ -277,22 +280,7 @@ class MLInterface:
                 self.direct_plot_results(results, f'Bagged {model_name} 10-Fold CV & Grid Search Parameters')
             self.dump_result_log()
 
-    def perform_experiment_2(self):
-        self.start_new_result_log(f'YOLO Comparison: Training Classical Models on Synthetic Data')
-        self.load_experiment_set(2,'yolo')
-        for model in ['lg', 'rf']:
-            self.select_model(model)
-            model_name = self.get_model_name()
-            self.load_grid_search_parameters()
-            self.train_model()
-            results = self.evaluate_model(suppress_report=True)
-            result_title = f'{model_name} Trained on Yolo Synthetic Dataset'
-            self.write_to_result_log(results, result_title)
-            self.direct_plot_results(results, result_title)
-        self.dump_result_log()
-        # perform some kind of statistical analysis after this
-
-    def perform_experiment_3a(self):
+    def perform_experiment_2a(self):
         self.start_new_result_log(f'Support Vector Machine Performance On Metagenomic Signature Data')
         self.select_model('svm')
         model_name=type(self.model).__name__
@@ -323,6 +311,21 @@ class MLInterface:
         results = self.evaluate_model(method='cv',suppress_report=True)
         self.write_to_result_log(results, '10-Fold Cross Validation & Bagged Grid Search Best Parameters')
         self.direct_plot_results(results, f'Bagged {model_name} 10-Fold CV & Grid Search Parameters')
+
+    def perform_experiment_3(self):
+        self.start_new_result_log(f'YOLO Comparison- Training Classical Models on Synthetic Data')
+        self.load_experiment_set(2,'yolo')
+        for model in ['lg', 'rf']:
+            self.select_model(model)
+            model_name = self.get_model_name()
+            self.load_grid_search_parameters()
+            self.train_model()
+            results = self.evaluate_model(suppress_report=True)
+            result_title = f'{model_name} Trained on Yolo Synthetic Dataset'
+            self.write_to_result_log(results, result_title)
+            self.direct_plot_results(results, result_title)
+        self.dump_result_log()
+        # perform some kind of statistical analysis after this
 
     # ============================
     # Plotting Utilities, Reporting
@@ -423,7 +426,7 @@ class MLInterface:
         model_name = self.get_model_name()
         if HyperparameterConfig.check_for_model_hyperparameters(self.model):
             best_params = HyperparameterConfig.get_model_hyperparameters(self.model)
-            self.select_model(model_name, best_params)
+            self.select_model(model_name, **best_params)
         else:
             self.grid_search_params(HyperparameterConfig.parameter_grids[model_name])
     
