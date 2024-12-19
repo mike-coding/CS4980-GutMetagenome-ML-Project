@@ -4,7 +4,7 @@ import xml.etree.ElementTree as et
 
 class Processor:
     def __init__(self):
-        self.path='../datasets/'
+        self.path = self.get_wd_path()
         self.classes=['HC','PwD']
         self.sheetDict={'study1':{'loaded':False,
                                   'Supplementary Table S6a':None, 
@@ -23,7 +23,15 @@ class Processor:
                                         'PwD_test_(yolo)':None}}
         self.study2_split_IDs={'loaded':False,'train':[],'test':[]}
         self.demographicData= pd.DataFrame()
+
+    def get_wd_path(self):
+        script_dir = os.path.dirname(os.path.realpath(__file__))
+        project_root = os.path.abspath(os.path.join(script_dir, '..'))
+        datasets_abs_path = os.path.join(project_root, 'datasets')
+        return datasets_abs_path + os.sep
+
     def build_all_sets(self):
+        print(f'Building all datasets. This may take a moment...')
         #study1
         processor.process_set(study=1)
         processor.process_set(study=1,split=True)
@@ -40,6 +48,7 @@ class Processor:
         processor.process_set(study=2, split=True, useSynthetic=True)
         processor.process_set(study=2,addDemoData=True)
         processor.process_set(study=2,split=True,addDemoData=True)
+        print('Datasets built.')
 
     def process_set(self, **kwargs):
         """
@@ -52,7 +61,7 @@ class Processor:
         """
         study=kwargs.get('study', 2)
         print(f'\nPreprocessing dataset for study {study}\n====================================')
-        self.report_kwargs()
+        self.report_kwargs(**kwargs)
         if kwargs.get('addDemoData',False):
             self.build_demographic_data()
         if study==1:
@@ -61,12 +70,11 @@ class Processor:
             self.process_study2_set(**kwargs)
 
     def process_study1_set(self, **kwargs):
-        #unpack kwargs
         split= kwargs.get('split',False)
         useSpecies=kwargs.get('useSpecies',True)
         addDemoData=kwargs.get('addDemoData',False)
+
         self.load_sheets('study1')
-        #get genus/species-level sheet
         working_df=self.sheetDict['study1'][f'Supplementary Table S6{"b" if useSpecies else "a"}']
         working_df=working_df.drop(['Samples', 'Median HC', 'Median PwD', 'Wilcoxon', 'FDR'],axis=1)
         working_df=working_df.transpose()
@@ -85,7 +93,7 @@ class Processor:
     def split_frame(self, working_df):
         self.load_classic_splits()
         sets = {'test':[], 'train':[]}
-        # iterate over rows & find train/test IDs
+        # find train/test IDs per row
         for index, row in working_df.iterrows():
             if len(sets['test'])<1 or len(sets['train'])<1: #handle header row
                 sets['train'].append(row.to_dict())
@@ -128,28 +136,30 @@ class Processor:
             self.write_csv(df,'full',**kwargs)
 
     def write_csv(self, df, _set, useHeaders=True, **kwargs): 
-        #build dataset name from parameters
-        #create subdirectories where necessary
-        #write dataFrame to csv in respective directory
+        '''
+        build dataset name from parameters
+        create subdirectories where necessary
+        write dataFrame to csv in respective directory
+        '''
         study_number = kwargs.get('study',2)
         csv_name='study'
         csv_name+=str(study_number)
-        csv_path=self.path+'processed/'+csv_name+'_sets/'
+        csv_path = os.path.join(self.path, 'processed', f"{csv_name}_sets")
         if study_number==2:
             csv_name+= '_yolo' if kwargs.get('useSynthetic',False) else '_classic'
         if not kwargs.get('useSpecies',True):
             csv_name+='_genus'
-        csv_name=csv_name+'_'+_set
+        csv_name = f"{csv_name}_{_set}"
         if kwargs.get('addDemoData',False):
             csv_name+='_demo'
-            csv_path+='demographic_features/'
+            csv_path = os.path.join(csv_path, 'demographic_features')
         os.makedirs(csv_path, exist_ok=True)
-        full_csv_string= csv_path+csv_name+'.csv'
+        full_csv_string= os.path.join(csv_path, csv_name+'.csv')
         df.to_csv(full_csv_string,index=False,header=useHeaders)
 
     def report_kwargs(self, **kwargs):
-        for kwarg in kwargs.items():
-            print(f'{kwarg[0]}: {kwarg[1]}')
+        for k, v in kwargs.items():
+            print(f'{k}: {v}')
 
     def concat_frames(self, sheet_block, _set, addDemoData):
         frames= [self.sheetDict[sheet_block][sheet] for sheet in self.sheetDict[sheet_block].keys() if _set in sheet]
@@ -179,7 +189,6 @@ class Processor:
                     df = self.sheetDict['study2_classic'][f'{classType}_{split}_(rfel)']
                     IDs = df.iloc[:, 0].to_list()
                     [self.study2_split_IDs[split].append(x) for x in IDs]
-                    #self.study2_split_IDs[split].append(IDs)
             self.study2_split_IDs['loaded']=True
 
     def load_sheets(self, sheetBlock):
@@ -190,7 +199,7 @@ class Processor:
                 filename, header = 'SupplementaryTableS1.xlsx', 2
             sheetNames=self.make_keys_list(self.sheetDict[sheetBlock])
             for sheet in sheetNames:
-                df = pd.read_excel(self.path+filename,sheet_name=sheet, header=header)
+                df = pd.read_excel(os.path.join(self.path, filename),sheet_name=sheet, header=header)
                 self.sheetDict[sheetBlock][sheet]=df
             self.sheetDict[sheetBlock]['loaded']=True
             print('Sheets loaded.')
@@ -207,13 +216,15 @@ class Processor:
         return key_list
 
     def build_demographic_data(self):
+        demo_path = os.path.join(self.path, 'processed', 'demographic_data.csv')
         if self.demographicData.empty:
-            if os.path.exists(self.path+f'processed/demographic_data.csv'):
+            if os.path.exists(demo_path):
                 print('Loading demographic data.')
-                self.demographicData = pd.read_csv(self.path+f'processed/demographic_data.csv')
+                self.demographicData = pd.read_csv(demo_path)
             else:
                 print('Building demographic data from BioProject XML...')
-                tree = et.parse('../datasets/BioProject_PRJNA762199_summary.xml')
+                xml_path = os.path.join(self.path, 'BioProject_PRJNA762199_summary.xml')
+                tree = et.parse(xml_path)
                 root = tree.getroot()
                 subject_dict={}
                 for biosample in root.findall('BioSample'):
@@ -233,12 +244,9 @@ class Processor:
                 df = df.transpose()
                 df.index.name = 'ID'
                 df = df.reset_index()
-                df.to_csv(self.path+f'processed/demographic_data.csv',index=False)
+                df.to_csv(demo_path,index=False)
                 self.demographicData=df
         
 if __name__ == "__main__":
-    #assumes execution occurs from /scripts/
     processor = Processor()
-    #Check which set user wants to generate
     processor.build_all_sets()
-    #processor.process_set(study=1, split=False, addDemoData=True)

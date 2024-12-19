@@ -96,7 +96,6 @@ def train_random_forest_classic(X_train, Y_train, create_feature_importance_repo
         report_feature_importances(model, X_train.columns, True)
     return model
 
-
 def train_log_reg_grid_search(X_train,Y_train,gridLevel):
     random_state=42
     fit_intercept=False
