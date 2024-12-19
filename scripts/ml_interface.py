@@ -3,22 +3,23 @@ import numpy as np
 import pandas as pd
 from typing import Optional, Dict, Any, Union, List
 
-import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg')
+from matplotlib import pyplot as plt
 import seaborn as sns
 
-from sklearn.model_selection import train_test_split, GridSearchCV, KFold
+from sklearn.model_selection import train_test_split, GridSearchCV, KFold, StratifiedKFold
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, BaggingClassifier, AdaBoostClassifier
 from sklearn.svm import SVC, LinearSVC
 from sklearn.preprocessing import StandardScaler, PolynomialFeatures
-from sklearn.pipeline import Pipeline
-from sklearn.metrics import (
-    accuracy_score, confusion_matrix, classification_report, roc_curve, auc
-)
+from sklearn.pipeline import make_pipeline
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, roc_curve, auc
 from sklearn.base import clone
+from sklearn.neighbors import KNeighborsClassifier
+
 from csv_preprocessor import DataPreprocessor
 from model_hyperparameters import HyperparameterConfig
-from sklearn.neighbors import KNeighborsClassifier
 
 class MLInterface:
     """
@@ -69,12 +70,12 @@ class MLInterface:
         Select the model type: 'lg' for LogisticRegression, 'rf' for RandomForest, 'svm' for SVC.
         Additional model_params can be passed directly to the constructor.
         """
-        if model_type == 'lg':
+        if model_type == 'lg' or model_type == 'LogisticRegression':
             self.model = LogisticRegression(random_state=self.random_state, **model_params)
-        elif model_type == 'rf':
+        elif model_type == 'rf'or model_type == 'RandomForestClassifier':
             self.model = RandomForestClassifier(random_state=self.random_state, n_jobs=-1, **model_params)
-        elif model_type == 'svm':
-            self.model = SVC(probability=True, random_state=self.random_state, **model_params)
+        elif model_type == 'svm' or model_type=='SVC':
+            self.model = make_pipeline(StandardScaler(),SVC(probability=True, random_state=self.random_state, **model_params))
         elif model_type =='knn':
             self.model = KNeighborsClassifier(n_jobs=-1)
         else:
@@ -82,6 +83,9 @@ class MLInterface:
 
         print(f"Model selected: {self.model}")
 
+    def get_model_name(self):
+        return type(self.model).__name__
+    
     # ============================
     # Training
     # ============================
@@ -252,26 +256,73 @@ class MLInterface:
             self.train_model()
             results = self.evaluate_model(suppress_report=True)
             self.write_to_result_log(results, 'Original Dataset Split & Original Parameters')
-            self.direct_plot_results(results, f'{model_name} Original Dataset Split & Original Parameters')
+            self.direct_plot_results(results, f'{model_name} Original Data Split & Parameters')
             #10-fold CV test
             reset_model(model)
             results = self.evaluate_model(method='cv',suppress_report=True)
             self.write_to_result_log(results, '10-Fold Cross Validation & Original Parameters')
-            self.direct_plot_results(results, f'{model_name} 10-Fold Cross Validation & Original Parameters')
+            self.direct_plot_results(results, f'{model_name} 10-Fold CV & Original Parameters')
             # grid search test
             if model=='lg': self.select_model('lg') 
             else: self.select_model('rf')
-            self.grid_search_params(param_grid=self.get_model_hyperparams())
+            self.load_grid_search_parameters()
             results = self.evaluate_model(method='cv',suppress_report=True)
-            self.write_to_result_log(results, '10-Fold Cross Validation & Grid Search Best Parameters')
-            self.direct_plot_results(results, f'{model_name} 10-Fold Cross Validation & Grid Search Best Parameters')
+            self.write_to_result_log(results, '10-Fold Cross Validation & Grid Search Parameters')
+            self.direct_plot_results(results, f'{model_name} 10-Fold CV & Grid Search Parameters')
             if model=='lg':
                 #try bagging
                 self.bag_or_boost_current_model(n_estimators=105,max_samples=0.9,max_features=0.85,bootstrap=False,verbose=0)
                 results = self.evaluate_model(method='cv',suppress_report=True)
                 self.write_to_result_log(results, '10-Fold Cross Validation & Bagged Grid Search Best Parameters')
-                self.direct_plot_results(results, f'{model_name} 10-Fold Cross Validation & Bagged Grid Search Best Parameters')
+                self.direct_plot_results(results, f'Bagged {model_name} 10-Fold CV & Grid Search Parameters')
             self.dump_result_log()
+
+    def perform_experiment_2(self):
+        self.start_new_result_log(f'YOLO Comparison: Training Classical Models on Synthetic Data')
+        self.load_experiment_set(2,'yolo')
+        for model in ['lg', 'rf']:
+            self.select_model(model)
+            model_name = self.get_model_name()
+            self.load_grid_search_parameters()
+            self.train_model()
+            results = self.evaluate_model(suppress_report=True)
+            result_title = f'{model_name} Trained on Yolo Synthetic Dataset'
+            self.write_to_result_log(results, result_title)
+            self.direct_plot_results(results, result_title)
+        self.dump_result_log()
+        # perform some kind of statistical analysis after this
+
+    def perform_experiment_3a(self):
+        self.start_new_result_log(f'Support Vector Machine Performance On Metagenomic Signature Data')
+        self.select_model('svm')
+        model_name=type(self.model).__name__
+        ## default params, default split
+        self.load_experiment_set(2,'classic')
+        self.train_model()
+        results = self.evaluate_model(suppress_report=True)
+        self.write_to_result_log(results, 'Original Dataset Split & Default Parameters')
+        self.direct_plot_results(results, f'{model_name} Original Data Split & Default Parameters')
+        #10-fold CV test
+        self.select_model('svm')
+        results = self.evaluate_model(method='cv',suppress_report=True)
+        self.write_to_result_log(results, '10-Fold Cross Validation & Default Parameters')
+        self.direct_plot_results(results, f'{model_name} 10-Fold CV & Default Parameters')
+        i_dont_have_a_plan_for_grid_searching_a_pipeline_yet=True
+        if i_dont_have_a_plan_for_grid_searching_a_pipeline_yet:
+            #skip grid search for now
+            self.dump_result_log()
+            return
+        # grid search test
+        self.select_model('svm')
+        self.load_grid_search_parameters()
+        results = self.evaluate_model(method='cv',suppress_report=True)
+        self.write_to_result_log(results, '10-Fold Cross Validation & Grid Search Parameters')
+        self.direct_plot_results(results, f'{model_name} 10-Fold CV & Grid Search Parameters')
+        #try bagging
+        self.bag_or_boost_current_model(n_estimators=105,max_samples=0.9,max_features=0.85,bootstrap=False,verbose=0)
+        results = self.evaluate_model(method='cv',suppress_report=True)
+        self.write_to_result_log(results, '10-Fold Cross Validation & Bagged Grid Search Best Parameters')
+        self.direct_plot_results(results, f'Bagged {model_name} 10-Fold CV & Grid Search Parameters')
 
     # ============================
     # Plotting Utilities, Reporting
@@ -279,7 +330,7 @@ class MLInterface:
     def plot_confusion_matrix(self, cm, classes, title='Confusion Matrix', direct_write=False):
         plt.figure(figsize=(6,5))
         sns.heatmap(cm, annot=True, fmt='d', cmap=plt.cm.Blues, xticklabels=classes, yticklabels=classes)
-        plt.title(title)
+        plt.title(title, wrap=True, pad=10)
         plt.ylabel('Actual')
         plt.xlabel('Predicted')
         plt.tight_layout()
@@ -298,10 +349,11 @@ class MLInterface:
         plt.plot(fpr, tpr, label='ROC curve (area = {:.2f})'.format(roc_auc))
         plt.plot([0,1],[0,1],'r--')
         plt.xlim([0.0,1.0])
-        plt.ylim([0.0,1.05])
-        plt.xlabel('False Positive Rate')
-        plt.ylabel('True Positive Rate')
-        plt.title(title)
+        plt.ylim([0.0,1.025])
+        plt.xlabel('False Positive Rate',labelpad=10)
+        plt.ylabel('True Positive Rate',labelpad=5)
+        plt.subplots_adjust(top=0.85)
+        plt.title(title,wrap=True, pad=25)
         plt.legend(loc="lower right")
         if not direct_write:
             plt.show()
@@ -332,7 +384,7 @@ class MLInterface:
             self.plot_confusion_matrix(
                 cm=cm,
                 classes=classes,
-                title=f'{title} Confusion Matrix',
+                title=f'{title}',
                 direct_write=True
             )
 
@@ -367,6 +419,14 @@ class MLInterface:
     # ============================
     # Grid Search & Hyperparameters
     # ============================
+    def load_grid_search_parameters(self):
+        model_name = self.get_model_name()
+        if HyperparameterConfig.check_for_model_hyperparameters(self.model):
+            best_params = HyperparameterConfig.get_model_hyperparameters(self.model)
+            self.select_model(model_name, best_params)
+        else:
+            self.grid_search_params(HyperparameterConfig.parameter_grids[model_name])
+    
     def grid_search_params(self, param_grid: dict, scoring='roc_auc', n_splits=5):
         """
         Perform grid search on the currently selected model.
@@ -395,9 +455,10 @@ class MLInterface:
 
         # Update the model with best estimator
         self.model = grid_search.best_estimator_
+        HyperparameterConfig.store_model_hyperparameters(self.model)
 
-    def get_model_hyperparams(self):
-        return HyperparameterConfig.config[type(self.model).__name__]
+    def get_model_hyperparameter_grid(self):
+        return HyperparameterConfig.parameter_grids[type(self.model).__name__]
     # ============================
     # Bagging/Boosting
     # ============================
@@ -441,3 +502,6 @@ if __name__ == "__main__":
     interface=MLInterface()
     #interface.perform_study_level_experiment(1,'svm')
     interface.perform_experiment_1()
+    interface.perform_experiment_2()
+    interface.perform_experiment_3a()
+

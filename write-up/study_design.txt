@@ -13,28 +13,43 @@ STUDY_DESIGN:
         * 10-Fold cross-validation, grid search for optimal parameters
 
 2. YOLO Comparison: Using Synthetic Data
-    a. Logistic regression
+    a. Logistic regression with:
         * original dataset split, 
         * grid search optimal parameters
 
-    b. Random forest
+    b. Random forest with:
         * original dataset split, 
         * grid search optimal parameters
 
     c. Statistical comparison
 
-3. Other Experiments
-    a. Support Vector Machines
+3. Support Vector Machine Exploration
+    a. SVC: RBF Kernel
         * original dataset split
         * 10-fold cross validation
         * 10-fold cross validation, grid search
         * YoloSet: original dataset split, optimal grid search results
-        * Normalizing datasets
+    
+    b. SVC: Polynomial Kernel
+        * original dataset split
+        * 10-fold cross validation
+        * 10-fold cross validation, grid search
+        * YoloSet: original dataset split, optimal grid search results
+    
+    c. LinearSVC
+        * original dataset split
+        * 10-fold cross validation
+        * 10-fold cross validation, grid search
+        * YoloSet: original dataset split, optimal grid search results
 
-    b. Comparing with sets including demographic data
-
-    c. Comparing with sets sourced from study 1
-
-    d. Classification boundaries
+4. Other Experiments
+    a. Classification boundaries
         * Visualizations
         * Important feature comparisons
+
+    b. Compare stratified K folds in cross-validation
+
+    c. Comparing with sets including demographic data
+
+    d. Comparing with sets sourced from study 1
+
