@@ -1,5 +1,6 @@
 import pandas as pd 
 import os
+import xml.etree.ElementTree as et
 
 class Processor:
     def __init__(self):
@@ -21,20 +22,40 @@ class Processor:
                                         'HC_test_(yolo)':None, 
                                         'PwD_test_(yolo)':None}}
         self.study2_split_IDs={'loaded':False,'train':[],'test':[]}
+        self.demographicData= pd.DataFrame()
+    def build_all_sets(self):
+        #study1
+        processor.process_set(study=1)
+        processor.process_set(study=1,split=True)
+        processor.process_set(study=1, useSpecies=False)
+        processor.process_set(study=1,split=True,useSpecies=False)
+        processor.process_set(study=1,addDemoData=True)
+        processor.process_set(study=1,split=True,addDemoData=True)
+        processor.process_set(study=1, useSpecies=False,addDemoData=True)
+        processor.process_set(study=1,split=True,useSpecies=False,addDemoData=True)
 
-    def processSet(self, **kwargs):
+        #study2
+        processor.process_set(study=2)
+        processor.process_set(study=2,split=True)
+        processor.process_set(study=2, split=True, useSynthetic=True)
+        processor.process_set(study=2,addDemoData=True)
+        processor.process_set(study=2,split=True,addDemoData=True)
+        processor.process_set(study=2, split=True, useSynthetic=True,addDemoData=True)
+
+    def process_set(self, **kwargs):
         """
         kwargs:
             - study (int): data source- study 1 or 2
-            - split (bool): Whether we mirror the study 2 train/test split
+            - split (bool, optional): Whether we mirror the study 2 train/test split. Default False
             - useSynthetic (bool, optional): study 2-specific. Yolo data flag. Default False.
-            - useSpecies (bool, optional): study 1-specific. genus/species flag. Default False.
+            - useSpecies (bool, optional): study 1-specific. genus/species flag. Default True.
+            - addDemoData (bool, optional): include bioproject age & sex per subject. Default False
         """
         study=kwargs.get('study', 2)
-        print('Preprocessing datasets\n====================')
-        #verify split IDs have been stored, collect them if not
+        print(f'\nPreprocessing dataset for study {study}\n======================================')
+        if kwargs.get('addDemoData',False):
+            self.build_demographic_data()
         if study==1:
-            self.load_sheets('study1')
             self.process_study1_set(**kwargs)
         else: #study 2
             self.process_study2_set(**kwargs)
@@ -43,33 +64,44 @@ class Processor:
         #unpack kwargs
         split= kwargs.get('split',False)
         useSpecies=kwargs.get('useSpecies',True)
+        addDemoData=kwargs.get('addDemoData',False)
+        print(f'splitting: {split}')
+        print(f'using species: {useSpecies}')
+        print(f'adding demo data: {addDemoData}')
+        self.load_sheets('study1')
         #get genus/species-level sheet
         working_df=self.sheetDict['study1'][f'Supplementary Table S6{"b" if useSpecies else "a"}']
         working_df=working_df.drop(['Samples', 'Median HC', 'Median PwD', 'Wilcoxon', 'FDR'],axis=1)
         working_df=working_df.transpose()
         working_df.reset_index(inplace=True)
-        if not split: 
+        if addDemoData:
+                working_df = self.join_demo_data(working_df)
+        if not split:
             working_df.iloc[0,0]='PwD'
             working_df.iloc[1:,0]=working_df.iloc[1:,0].apply(lambda x: 0 if 'HC' in str(x) else 1)
-            working_df.to_csv(self.path+'processed/study1_full.csv',index=False, header=False)
+            #working_df.to_csv(self.write_csv('study1','full',**kwargs),index=False, header=False)
+            self.write_csv(working_df,'full', False, **kwargs)
         else:
-            frames=self.perform_split_processing(working_df)
+            frames=self.split_frame(working_df)
             for _set, df in frames.items():
-                df.to_csv(self.path+f'/processed/study1_{_set}_{"species" if useSpecies else "genus"}.csv', index=False, header=False)
+                self.write_csv(df,_set,False,**kwargs)
+                #df.to_csv(self.write_csv('study1',_set,**kwargs), index=False, header=False)
 
-    def perform_split_processing(self, working_df):
+    def split_frame(self, working_df):
         self.load_classic_splits()
         sets = {'test':[], 'train':[]}
         # iterate over rows & find train/test IDs
-        for row in working_df.iterrows():
-            full_ID = row['index']
-            if '_' not in full_ID: #handle header row
-                print(full_ID)
-                row['index']='PwD'
+        for index, row in working_df.iterrows():
+            if len(sets['test'])<1 or len(sets['train'])<1: #handle header row
                 sets['train'].append(row.to_dict())
                 sets['test'].append(row.to_dict())
-                print(f'featurespace len: {len(row.to_dict())}')
                 continue
+            try:
+                full_ID = row['index']
+            except:
+                print("[ERROR]: Couldn't get full_ID from row['index'].....")
+                print(row)
+                quit()
             if full_ID in self.study2_split_IDs['train']:
                 row['index']= 0 if 'HC' in full_ID else 1
                 sets['train'].append(row.to_dict())
@@ -85,23 +117,56 @@ class Processor:
             df.iloc[0,0]='PwD'
             frames[_set]=(df)
         return frames
-             
+
     def process_study2_set(self, **kwargs):
         useSynthetic = kwargs.get('useSynthetic',False)
         split=kwargs.get('split',False)
-        if not useSynthetic:
-            self.load_sheets('study2_classic')
-            if split: #get the IDs for each split if requested
-                self.load_classic_splits()
-                df_train = pd.concat()
-            else: #fullset
-                pass
-        else: #yoloSets
-            self.load_sheets('study2_yolo')
-            if split: #get the IDs for each split if requested
-                pass
-            else: # fullset
-                pass
+        addDemoData=kwargs.get('addDemoData',False)
+        sheet_block = 'study2_classic' if not useSynthetic else 'study2_yolo'
+        self.load_sheets(sheet_block)
+        if split: #get the IDs for each split if requested
+            for _set in ['train', 'test']:
+                df= self.concat_frames(sheet_block, _set, addDemoData)
+                #df.to_csv(self.write_csv(sheet_block,_set=_set,**kwargs),index=False)
+                self.write_csv(df, _set, **kwargs)
+        else: # fullset
+            df = self.concat_frames(sheet_block,"_",addDemoData)
+            #df.to_csv(self.write_csv(sheet_block,_set='full',**kwargs),index=False)
+            self.write_csv(df,'full',**kwargs)
+
+    def write_csv(self, df, _set, useHeaders=True, **kwargs):
+        sheet_block='/study'
+        sheet_block+=str(kwargs.get('study',2))
+        sheet_block+= '_yolo' if kwargs.get('useSynthetic',False) else '_classic'
+        sub_directory= 'study1_sets' if '1' in sheet_block else 'study2_sets'
+        sub_directory_path= self.path+'processed/'+sub_directory
+        os.makedirs(sub_directory_path, exist_ok=True)
+        csv_string=self.path+'processed/'+sub_directory+sheet_block+'_'+_set
+        if not kwargs.get('useSpecies',True):
+            csv_string+='_genus'
+        if kwargs.get('addDemoData',False):
+            csv_string+='_demographic'
+        csv_string+='.csv'
+        df.to_csv(csv_string,index=False,header=useHeaders)
+
+    def concat_frames(self, sheet_block, _set, addDemoData):
+        frames= [self.sheetDict[sheet_block][sheet] for sheet in self.sheetDict[sheet_block].keys() if _set in sheet]
+        df = pd.concat(frames,ignore_index=True,join='inner')
+        df.fillna(0, inplace=True)
+        if addDemoData:
+            df = self.join_demo_data(df)
+        df.iloc[0:,0]=df.iloc[0:,0].apply(lambda x: 0 if 'HC' in str(x) else 1)
+        return df
+
+    def join_demo_data(self, df):
+        right_target=df.columns[0]
+        df = self.demographicData.merge(df, right_on=right_target, left_on='ID', how='right')
+        df=df.drop(df.columns[3],axis=1)
+        if right_target=='index': #apply fixes for frames not using header
+            for pair in [(0,'PwD'),(1,'sex'),(2,'age')]:
+                df.iloc[0,pair[0]] = pair[1]
+            df.rename(columns={'ID': 'index'}, inplace=True)
+        return df
 
     def load_classic_splits(self):
         if not self.study2_split_IDs['loaded']:
@@ -127,20 +192,6 @@ class Processor:
             self.sheetDict[sheetBlock]['loaded']=True
             print('Sheets loaded.')
 
-    def protoProcessor():
-        sheetNames = []
-        master_df_list = []
-        for sheetName in sheetNames:
-            print(f'Processing sheet: {sheetName}')
-            workingDF = pd.read_excel('SupplementaryTableS1.xlsx', sheet_name=sheetName, header=2)
-            workingDF = workingDF.iloc[:, 1:]
-            depression = 1 if 'PwD' in sheetName else 0
-            workingDF.insert(0, 'PwD', depression)
-            master_df_list.append(workingDF)
-        master_df = pd.concat(master_df_list, ignore_index=True)
-        master_df.fillna(0, inplace=True)
-        master_df.to_csv('master_set.csv', index=False)
-
     def prompt_user_for_error(self, error):
         print(f'PREPROCESSOR ERROR OCCURRED: {error}')
         userChoice = input('Continue anyway? Y/N:\n')
@@ -152,9 +203,39 @@ class Processor:
         key_list.remove('loaded')
         return key_list
 
-
+    def build_demographic_data(self):
+        if self.demographicData.empty:
+            if os.path.exists(self.path+f'processed/demographic_data.csv'):
+                print('Loading demographic data.')
+                self.demographicData = pd.read_csv(self.path+f'processed/demographic_data.csv')
+            else:
+                print('Building demographic data from BioProject XML...')
+                tree = et.parse('../datasets/BioProject_PRJNA762199_summary.xml')
+                root = tree.getroot()
+                subject_dict={}
+                for biosample in root.findall('BioSample'):
+                    description = biosample.find('Description')
+                    subject_ID = description.find('Title').text.replace('PD','PwD')
+                    text = description.find('Comment').find('Paragraph').text
+                    text = text.split('(')[1]
+                    text = text.split(')')[0]
+                    texts = text.split(',')
+                    sex,age = texts[0],texts[1]
+                    sex='F' if 'f' in sex.lower() else 'M'
+                    age = "".join([x for x in age if x.isdigit()])
+                    subject_dict[subject_ID]={'sex':sex,'age':age}
+                self.demographicData=subject_dict
+                print('Demographic data built.')
+                df = pd.DataFrame(subject_dict)
+                df = df.transpose()
+                df.index.name = 'ID'
+                df = df.reset_index()
+                df.to_csv(self.path+f'processed/demographic_data.csv',index=False)
+                self.demographicData=df
+        
 if __name__ == "__main__":
     #assumes execution occurs from /scripts/
     processor = Processor()
     #Check which set user wants to generate
-    processor.processSet(study=1,split=True)
+    processor.build_all_sets()
+    #processor.process_set(study=1, split=False, addDemoData=True)

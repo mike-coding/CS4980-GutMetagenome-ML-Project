@@ -1,9 +1,10 @@
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
+import csv
 
 # Base URLs
-BIOPROJECT_URL = "https://www.ncbi.nlm.nih.gov/sra?LinkName=bioproject_sra_all&from_uid=762199"
+BIOPROJECT_URL = "https://www.ncbi.nlm.nih.gov/biosample?Db=biosample&DbFrom=bioproject&Cmd=Link&LinkName=bioproject_biosample&LinkReadableName=BioSample&ordinalpos=1&IdsFromResult=762199"
 SRX_BASE_URL = "https://www.ncbi.nlm.nih.gov/sra/"
 
 # Function to fetch SRX IDs from the BioProject page
@@ -14,8 +15,16 @@ def get_srx_ids(bioproject_url):
 
     # Extract SRX IDs (assuming they are linked on the page)
     srx_links = soup.find_all("a", href=True)
-    srx_ids = [link.text for link in srx_links if "SRX" in link.text]
-    return srx_ids
+    #print(type(srx_links[0]))
+    srx_dict={}
+    for link in srx_links:
+        if '/biosample/' in link.get('href') and '_' in link.text:
+            srx_dict[link.text]=link.get('href') 
+    print(srx_dict.keys())
+    return
+    #srx_ids = [link.text for link in srx_links if "/biosample/" in link.text]
+    #print(srx_ids)
+    #return srx_ids
 
 # Function to scrape data from each SRX page
 def get_srx_data(srx_id):
@@ -25,6 +34,8 @@ def get_srx_data(srx_id):
     soup = BeautifulSoup(response.text, "html.parser")
     
     # Example: Extract a specific text field (modify this based on the page structure)
+    print(soup)
+    quit()
     title = soup.find("h1").text.strip() if soup.find("h1") else "N/A"
     description = soup.find("meta", attrs={"name": "description"})
     description_text = description["content"] if description else "N/A"
@@ -34,6 +45,7 @@ def get_srx_data(srx_id):
 # Main function to gather data and save it to a CSV
 def scrape_bioproject_to_csv(bioproject_url, output_file):
     srx_ids = get_srx_ids(bioproject_url)
+    return
     data = []
 
     for srx_id in srx_ids:
