@@ -17,6 +17,7 @@ from sklearn.metrics import (
 )
 from sklearn.base import clone
 from csv_preprocessor import DataPreprocessor
+from model_hyperparameters import HyperparameterConfig
 from sklearn.neighbors import KNeighborsClassifier
 
 class MLInterface:
@@ -37,6 +38,7 @@ class MLInterface:
         self.path=self.dataPreprocessor.get_data_path()
         self.results_path = os.path.join(self.path,'..', 'results')
         self.random_state=42
+        self.result_log={'title':'','body':''}
 
     # ============================
     # Data Loading
@@ -135,7 +137,9 @@ class MLInterface:
             Y_prob = self.model.predict_proba(X_test)[:, 1] if hasattr(self.model, "predict_proba") else None
             
             results = self._compute_metrics(Y_test, Y_pred, Y_prob)
-            self._report_results(results, gen_cr, gen_roc, gen_cm)
+            if not suppress_report:
+                self._report_results(results, gen_cr, gen_roc, gen_cm)
+            return results
 
         elif method == 'cv':
             if 'full' not in self.data:
@@ -148,7 +152,8 @@ class MLInterface:
                 self._report_results(results, gen_cr, gen_roc, gen_cm)
             return results
         else:
-            raise ValueError("method must be 'holdOut' or 'cv'")
+            print("[ERROR]: Method must be 'holdOut' or 'cv'")
+            return self._generate_blank_results()
 
     def _compute_metrics(self, Y_test, Y_pred, Y_prob=None):
         accuracy = accuracy_score(Y_test, Y_pred)
@@ -225,33 +230,70 @@ class MLInterface:
             return
         self.select_model(model)
         name = f'{type(self.model).__name__}_experiment_on_study{study}'
-        resultLog=f'{name}\n========================================================\n========================================================\n\n'
+        self.start_new_result_log(name)
         print(f'Running experiment: {name}')
         for experiment_type in self.dataPreprocessor.valid_experiments[int(study)]:
             self.load_experiment_set(study,experiment_type)
             results = self.evaluate_model('cv',suppress_report=True)
             if len(str(results['accuracy']))<1:
                 continue
-            resultLog = ''.join([resultLog, f"Experiment: {experiment_type}\n--------------------------------------------------------\n", f'Accuracy: {str(results["accuracy"])}\n', f'ROC_AUC: {str(results["roc_auc"])}\n\n', f'{results["cr"]}\n', f'Confusion matrix:\n{str(results["cm"])}\n\n\n\n'])
-        output_file = os.path.join(self.results_path, f"{name}.txt")
-        with open(output_file, 'w') as f:
-            f.write(resultLog)
-        print(resultLog[:-3])
-        print(f"Results saved to {output_file}")
+            self.write_to_result_log(results, experiment_type)
+        self.dump_result_log()
+
+    def perform_experiment_1(self):
+        reset_model = lambda m: self.select_model('lg',penalty='elasticnet',solver='saga',l1_ratio=0.5) if m=='lg' else self.select_model('rf')
+        for model in ['lg', 'rf']:
+            reset_model(model)
+            model_name=type(self.model).__name__
+            ## part a
+            self.start_new_result_log(f'{model_name} Comparative Analysis')
+            reset_model(model)
+            self.load_experiment_set(2,'classic')
+            self.train_model()
+            results = self.evaluate_model(suppress_report=True)
+            self.write_to_result_log(results, 'Original Dataset Split & Original Parameters')
+            self.direct_plot_results(results, f'{model_name} Original Dataset Split & Original Parameters')
+            #10-fold CV test
+            reset_model(model)
+            results = self.evaluate_model(method='cv',suppress_report=True)
+            self.write_to_result_log(results, '10-Fold Cross Validation & Original Parameters')
+            self.direct_plot_results(results, f'{model_name} 10-Fold Cross Validation & Original Parameters')
+            # grid search test
+            if model=='lg': self.select_model('lg') 
+            else: self.select_model('rf')
+            self.grid_search_params(param_grid=self.get_model_hyperparams())
+            results = self.evaluate_model(method='cv',suppress_report=True)
+            self.write_to_result_log(results, '10-Fold Cross Validation & Grid Search Best Parameters')
+            self.direct_plot_results(results, f'{model_name} 10-Fold Cross Validation & Grid Search Best Parameters')
+            if model=='lg':
+                #try bagging
+                self.bag_or_boost_current_model(n_estimators=105,max_samples=0.9,max_features=0.85,bootstrap=False,verbose=0)
+                results = self.evaluate_model(method='cv',suppress_report=True)
+                self.write_to_result_log(results, '10-Fold Cross Validation & Bagged Grid Search Best Parameters')
+                self.direct_plot_results(results, f'{model_name} 10-Fold Cross Validation & Bagged Grid Search Best Parameters')
+            self.dump_result_log()
 
     # ============================
-    # Plotting Utilities
+    # Plotting Utilities, Reporting
     # ============================
-    def plot_confusion_matrix(self, cm, classes, title='Confusion Matrix'):
+    def plot_confusion_matrix(self, cm, classes, title='Confusion Matrix', direct_write=False):
         plt.figure(figsize=(6,5))
         sns.heatmap(cm, annot=True, fmt='d', cmap=plt.cm.Blues, xticklabels=classes, yticklabels=classes)
         plt.title(title)
         plt.ylabel('Actual')
         plt.xlabel('Predicted')
         plt.tight_layout()
-        plt.show()
+        if not direct_write:
+            plt.show()
+        else:
+            write_name=self.filter_title_for_write(title)
+            figures_dir = os.path.join(self.results_path, 'figures')
+            os.makedirs(figures_dir, exist_ok=True)
+            save_path = os.path.join(figures_dir, f"{write_name}.png")
+            plt.savefig(save_path)
+            plt.close()
 
-    def plot_roc_curve(self, fpr, tpr, roc_auc):
+    def plot_roc_curve(self, fpr, tpr, roc_auc, title='ROC Curve', direct_write=False):
         plt.figure()
         plt.plot(fpr, tpr, label='ROC curve (area = {:.2f})'.format(roc_auc))
         plt.plot([0,1],[0,1],'r--')
@@ -259,9 +301,68 @@ class MLInterface:
         plt.ylim([0.0,1.05])
         plt.xlabel('False Positive Rate')
         plt.ylabel('True Positive Rate')
-        plt.title('ROC Curve')
+        plt.title(title)
         plt.legend(loc="lower right")
-        plt.show()
+        if not direct_write:
+            plt.show()
+        else:
+            write_name=self.filter_title_for_write(title)
+            figures_dir = os.path.join(self.results_path, 'figures')
+            os.makedirs(figures_dir, exist_ok=True)
+            save_path = os.path.join(figures_dir, f"{write_name}.png")
+            plt.savefig(save_path)
+            plt.close()
+
+    def direct_plot_results(self, results, title):
+        cm = results.get('cm')
+        fpr = results.get('fpr')
+        tpr = results.get('tpr')
+        roc_auc = results.get('roc_auc')
+    
+        classes = self.dataPreprocessor.classes 
+        if fpr is not None and tpr is not None and roc_auc is not None:
+            self.plot_roc_curve(
+                fpr=fpr,
+                tpr=tpr,
+                roc_auc=roc_auc,
+                title=f'{title} ROC Curve',
+                direct_write=True
+            )
+        if cm is not None and classes is not None:
+            self.plot_confusion_matrix(
+                cm=cm,
+                classes=classes,
+                title=f'{title} Confusion Matrix',
+                direct_write=True
+            )
+
+    def filter_title_for_write(self, title):
+        write_name=title.replace('Cross Validation', 'CV')
+        write_name=write_name.replace('Dataset', '')
+        write_name=write_name.replace('&', '')
+        write_name=write_name.replace('Original', 'OG')
+        write_name=write_name.replace('Grid Search Best', 'gridSearch')
+        write_name=write_name.replace('Parameters','params')
+        write_name=write_name.replace(' ','_')
+        return write_name
+
+    def start_new_result_log(self,title):
+        self.result_log={'title':'','body':''}
+        self.result_log['title']=title
+
+    def write_to_result_log(self, results, subTitle):
+        self.result_log['body'] = ''.join([self.result_log['body'], f"Experiment: {subTitle}\n--------------------------------------------------------\n", f'Accuracy: {str(results["accuracy"])}\n', f'ROC_AUC: {str(results["roc_auc"])}\n\n', f'{results["cr"]}\n', f'Confusion matrix:\n{str(results["cm"])}\n\n\n\n'])
+
+    def dump_result_log(self):
+        name = self.result_log['title']
+        resultLog = self.result_log['body']
+        resultLog= f'{name}\n========================================================\n========================================================\n\n'+resultLog
+        output_file = os.path.join(self.results_path, f"{name}.txt")
+        with open(output_file, 'w') as f:
+            f.write(resultLog)
+        print(resultLog[:-3])
+        print(f"Results saved to {output_file}")
+        self.result_log={'title':'','body':''}
 
     # ============================
     # Grid Search & Hyperparameters
@@ -295,6 +396,8 @@ class MLInterface:
         # Update the model with best estimator
         self.model = grid_search.best_estimator_
 
+    def get_model_hyperparams(self):
+        return HyperparameterConfig.config[type(self.model).__name__]
     # ============================
     # Bagging/Boosting
     # ============================
@@ -336,4 +439,5 @@ class MLInterface:
 
 if __name__ == "__main__":
     interface=MLInterface()
-    interface.perform_study_level_experiment(1,'svm')
+    #interface.perform_study_level_experiment(1,'svm')
+    interface.perform_experiment_1()
