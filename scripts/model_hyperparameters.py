@@ -37,6 +37,8 @@ class HyperparameterConfig:
                     best_parameters = json.load(open(best_parameters_file, 'r'))
                 except:
                     best_parameters = {}
+            else:
+                best_parameters = {}
             best_parameters[model_name] = parameters
             try:
                 json.dump(best_parameters, open(best_parameters_file, 'w'), indent=4)
