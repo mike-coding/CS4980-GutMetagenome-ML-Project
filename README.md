@@ -2,20 +2,77 @@
 Training classification models on human gut metagenomic signatures 
 
 ## Testing This Project
-Instructions on using the scripts, etc to go here
+ADD: Instructions for building datasets, running experiments, etc
 
 ### Dependencies
 This project was developed in Python 3.11.0.
 To run the scripts in this repository, you'll want to make sure you've installed Python and the modules listed below. This can be accomplished by running the following through your command line:
 ```
 pip install pandas
-pip install requests
-pip install bs4
 pip install scikit-learn
-pip install numpy
 pip install matplotlib
 pip install seaborn
 ```
+
+## Project Aims
+
+- Determine if logistic regression or random forest models can be more performant than was reported in [study #2](#2-angelova-iy-kovtun-as-averina-ov-koshenko-ta-danilenko-vn-unveiling-the-connection-between-microbiota-and-depressive-disorder-through-machine-learning-international-journal-of-molecular-sciences-2023-242216459-httpsdoiorg103390ijms242216459)
+- Perform some tests to determine if [study #2](#2-angelova-iy-kovtun-as-averina-ov-koshenko-ta-danilenko-vn-unveiling-the-connection-between-microbiota-and-depressive-disorder-through-machine-learning-international-journal-of-molecular-sciences-2023-242216459-httpsdoiorg103390ijms242216459)'s YOLOv8 results are reliable
+- Determine if other classifiers (like support vector machines or k-nearest neighbor) can predict competitively on metagenomic signature data
+- Compare how these classifiers define their respective decision boundaries
+
+
+## Study Design
+1. Comparative Analysis: Classical Models
+    a. Logistic Regression
+        * Original dataset split, original parameters
+        * 10-Fold cross-validation, original parameters
+        * 10-Fold cross-validation, grid search for optimal parameters
+        * 10-Fold cross-validation, bag best grid search result
+    b. Random Forest
+        * Original dataset split, original parameters
+        * 10-Fold cross-validation, original parameters
+        * 10-Fold cross-validation, grid search for optimal parameters
+2. Support Vector Machine Exploration
+    a. SVC: RBF Kernel
+        * original dataset split
+        * 10-fold cross validation
+        * 10-fold cross validation, grid search
+        * bag best result
+    b. SVC: Polynomial Kernel
+        * original dataset split
+        * 10-fold cross validation
+        * 10-fold cross validation, grid search
+        * bag best result
+    c. LinearSVC
+        * original dataset split
+        * 10-fold cross validation
+        * 10-fold cross validation, grid search
+        * bag best result
+
+    d. Examine support vectors
+3. YOLO Comparison: Using Synthetic Data
+    a. Logistic regression with:
+        * original dataset split, 
+        * grid search optimal parameters
+            > reuse part 1 optimal parameters
+    b. Random forest with:
+        * original dataset split, 
+        * grid search optimal parameters
+            > reuse part 1 optimal parameters
+    c. SVM - best performing
+        * original dataset split, 
+        * grid search optimal parameters
+            > reuse part 2 optimal parameters
+    d. Statistical comparison
+4. Other Experiments
+    a. Feature Importance Comparison
+        * SVMs
+        * Logistic regression
+        * Random forest
+    b. Comparing with sets including demographic data
+    c. Comparing with sets sourced from study 1
+
 
 ## Foundational Works
 These two studies form the foundation for my project: 
@@ -32,9 +89,4 @@ These two studies form the foundation for my project:
 - Tested logistic regression, random forest, and YOLOv8 CNN
 <br>
 
-## Project Goals
 
-- Determine if logistic regression or random forest models can be more performant than was reported in study #2
-- Perform some tests to determine if study 2's YOLOv8 results are reliable
-- Determine if other classifiers (like support vector machines) can also predict accurately on metagenomic signature data
-- Compare how these classifiers define the boundary between a healthy individuals and those with depression

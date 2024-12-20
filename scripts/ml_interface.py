@@ -1,5 +1,4 @@
 import os
-import numpy as np
 import pandas as pd
 from typing import Optional, Dict, Any, Union, List
 
@@ -13,7 +12,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, BaggingClassifier, AdaBoostClassifier
 from sklearn.svm import SVC, LinearSVC
 from sklearn.preprocessing import StandardScaler, PolynomialFeatures
-from sklearn.pipeline import make_pipeline
+from sklearn.calibration import CalibratedClassifierCV
+from sklearn.pipeline import Pipeline
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, roc_curve, auc
 from sklearn.base import clone
 from sklearn.neighbors import KNeighborsClassifier
@@ -73,18 +73,31 @@ class MLInterface:
         model_params.pop('random_state', None)
         model_params.pop('n_jobs', None)
         model_params.pop('kernel', None)
+        model_params.pop('probability', None)
         if model_type == 'lg' or model_type == 'LogisticRegression':
             self.model = LogisticRegression(random_state=self.random_state, **model_params)
         elif model_type == 'rf' or model_type == 'RandomForestClassifier':
             self.model = RandomForestClassifier(random_state=self.random_state, n_jobs=-1, **model_params)
-        elif model_type == 'svc_rbf':
-            self.model = make_pipeline(StandardScaler(),SVC(probability=True, random_state=self.random_state, **model_params))
-        elif model_type == 'svc_poly':
-            self.model = make_pipeline(StandardScaler(),SVC(probability=True, random_state=self.random_state, kernel='poly', **model_params))
-        elif model_type == 'linearsvc':
-            self.model = make_pipeline(StandardScaler(),LinearSVC(random_state=self.random_state, **model_params))
-        elif model_type =='knn' or model_type=='kneighborsclassifier':
-            self.model = make_pipeline(StandardScaler(),KNeighborsClassifier(n_jobs=-1))
+        elif model_type == 'SVC_rbf':
+            self.model = Pipeline([
+                ('scaler', StandardScaler()),
+                ('clf', SVC(probability=True, random_state=self.random_state, **model_params))
+            ])
+        elif model_type == 'SVC_poly':
+            self.model = Pipeline([
+                ('scaler', StandardScaler()),
+                ('clf', SVC(probability=True, random_state=self.random_state, kernel='poly', **model_params))
+            ])
+        elif model_type == 'LinearSVC':
+            self.model = Pipeline([
+                ('scaler', StandardScaler()),
+                ('clf', CalibratedClassifierCV(estimator=LinearSVC(random_state=self.random_state, **model_params)))
+            ])
+        elif model_type == 'knn' or model_type == 'kneighborsclassifier':
+            self.model = Pipeline([
+                ('scaler', StandardScaler()),
+                ('clf', KNeighborsClassifier(n_jobs=-1))
+            ])
         else:
             raise ValueError("model_type must be one of ['lg', 'rf', 'svm']")
 
@@ -93,17 +106,16 @@ class MLInterface:
     def get_model_name(self):
         name= type(self.model).__name__
         if name=='Pipeline':
-            name, model = self.pull_model_from_pipeline()
+            name = self.get_pipeline_model_name()
         return name
     
-    def pull_model_from_pipeline(self):
-        name= type(self.model).__name__
-        if name=='Pipeline':
-            estimators = [x for x in self.model.steps if not 'standardscaler' in x][0]
-            name, model = estimators[0], estimators[1]
-            if name == 'svc':
-                name+=f'_{model.kernel}'
-        return name, model
+    def get_pipeline_model_name(self):
+        clf = self.model.named_steps['clf']
+        base = clf.estimator if hasattr(clf, 'estimator') else clf
+        name = type(base).__name__
+        if name == 'SVC':
+            name += f'_{base.kernel}'
+        return name
 
     # ============================
     # Training
@@ -184,7 +196,7 @@ class MLInterface:
         cr = classification_report(Y_test, Y_pred, output_dict=False)
         
         fpr, tpr, roc_auc_val = None, None, None
-        if Y_prob is not None:
+        if Y_prob is not None: #perform check for 
             fpr, tpr, _ = roc_curve(Y_test, Y_prob)
             roc_auc_val = auc(fpr, tpr)
         
@@ -273,8 +285,8 @@ class MLInterface:
                 self.direct_plot_results(results, f'Bagged {model_name} 10-Fold CV & Grid Search Parameters')
             self.dump_result_log()
 
-    def perform_experiment_2a(self):
-        for model in [('svc_rbf','RBF'), ('svc_poly', 'Poly'), ('linearsvc', 'Linear')]:
+    def perform_experiment_2(self):
+        for model in [('SVC_rbf','RBF'), ('SVC_poly', 'Poly'), ('LinearSVC', 'Linear')]:
             model_name = model[0]
             kernel = model[1]
             self.start_new_result_log(f'Support Vector Machine ({kernel}) Performance On Metagenomic Signature Data')
@@ -293,28 +305,28 @@ class MLInterface:
             self.write_to_result_log(results, '10-Fold Cross Validation & Default Parameters')
             self.direct_plot_results(results, f'{model_name} 10-Fold CV & Default Parameters')
 
-            i_dont_have_a_plan_for_grid_searching_a_pipeline_yet=True
-            if i_dont_have_a_plan_for_grid_searching_a_pipeline_yet:
-                #skip grid search for now
-                self.dump_result_log()
-                return
             # grid search test
             self.select_model(model_name)
             self.load_grid_search_parameters()
             results = self.evaluate_model(method='cv',suppress_report=True)
             self.write_to_result_log(results, '10-Fold Cross Validation & Grid Search Parameters')
             self.direct_plot_results(results, f'{model_name} 10-Fold CV & Grid Search Parameters')
-            
+
             #try bagging
             self.bag_or_boost_current_model(n_estimators=105,max_samples=0.9,max_features=0.85,bootstrap=False,verbose=0)
             results = self.evaluate_model(method='cv',suppress_report=True)
             self.write_to_result_log(results, '10-Fold Cross Validation & Bagged Grid Search Best Parameters')
             self.direct_plot_results(results, f'Bagged {model_name} 10-Fold CV & Grid Search Parameters')
+            
+            # TODO:
+            # examine support vectors
+
+            self.dump_result_log()
 
     def perform_experiment_3(self):
         self.start_new_result_log(f'YOLO Comparison- Training Classical Models on Synthetic Data')
         self.load_experiment_set(2,'yolo')
-        for model in ['lg', 'rf']:
+        for model in ['lg', 'rf', 'SVC_rbf', 'SVC_poly', 'LinearSVC']:
             self.select_model(model)
             model_name = self.get_model_name()
             self.load_grid_search_parameters()
@@ -450,6 +462,9 @@ class MLInterface:
             best_params = HyperparameterConfig.get_model_hyperparameters(self.model)
             self.select_model(model_name, **best_params)
         else:
+            #print(f'No best params found for model: {model_name}')
+            #awaitUser=input('Start new grid search?')
+            #if 'y' in awaitUser.tolower():
             self.grid_search_params(HyperparameterConfig.parameter_grids[model_name])
     
     def grid_search_params(self, param_grid: dict, scoring='roc_auc', n_splits=5):
@@ -471,7 +486,7 @@ class MLInterface:
             scoring=scoring,
             cv=cv,
             n_jobs=-1,
-            error_score=np.nan,
+            error_score=float('nan'),
             verbose=1
         )
         grid_search.fit(X, Y)
@@ -526,13 +541,8 @@ class MLInterface:
 
 if __name__ == "__main__":
     interface=MLInterface()
-
-    interface.select_model('knn')
-    print(interface.get_model_name())
-    quit()
-
     # run experiments!!!
     interface.perform_experiment_1()
     interface.perform_experiment_2()
-    interface.perform_experiment_3a()
+    interface.perform_experiment_3()
 
