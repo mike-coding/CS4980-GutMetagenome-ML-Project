@@ -24,26 +24,26 @@ pip install seaborn
 
 ## Study Design
 1. **Comparative Analysis: Classical Models**<br>
- <code>**Log Reg</code> <code>Random Forest</code>**<br>
+ **[ <code>Log Reg</code> <code>Random Forest</code> ]**<br>
       * Original 70:30 split with original parameters
       * 10-Fold cross-validation with original parameters
       * 10-Fold CV with grid search-optimized parameters
       * <code>**LogReg Only</code>:** 10-Fold CV + bag grid search-optimized model
 2. **Support Vector Machine Exploration**<br>
- <code>**SVM(RBF)</code> <code>SVM(polynomial)</code> <code>LinearSVM</code>**<br>
+ **[ <code>SVM(RBF)</code> <code>SVM(polynomial)</code> <code>LinearSVM</code> ]**<br>
    * Original 70:30 split
    * 10-fold cross validation
    * 10-fold CV + grid search-optimized parameters
    * bag models with optimized parameters
    * Examine support vectors
 3. **YOLO Comparison: Using Synthetic Data**<br>
- <code>**SVM</code> <code>Log Reg</code> <code>Random Forest</code>**<br>
+ **[ <code>SVM</code> <code>Log Reg</code> <code>Random Forest</code> ]**<br>
    * original dataset split
    * grid search optimal parameters
    * Statistical comparison
 4. **Other Experiments**
     * Feature importance comparison<br>
-<code>**SVM</code> <code>Log Reg</code> <code>Random Forest</code>**<br>
+**[ <code>SVM</code> <code>Log Reg</code> <code>Random Forest</code> ]**<br>
     * Comparing with sets that include demographic data
     * Comparing with sets sourced from [study 1](#1-kovtun-as-averina-ov-angelova-iy-et-al-alterations-of-the-composition-and-neurometabolic-profile-of-human-gut-microbiota-in-major-depressive-disorder-biomedicines-2022109-2162-published-2022-sep-2-httpsdoiorg103390biomedicines10092162)
 
