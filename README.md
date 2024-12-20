@@ -10,6 +10,8 @@ From the project root folder, run the following through your command line to ins
 ```
 pip install -r requirements.txt
 ```
+
+### Run Experiments
 From project root, you can execute this to start running experiments:
 ```
 Python scripts/ml_interface.py
