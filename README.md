@@ -23,55 +23,29 @@ pip install seaborn
 
 
 ## Study Design
-1. Comparative Analysis: Classical Models
-    a. Logistic Regression
-        * Original dataset split, original parameters
-        * 10-Fold cross-validation, original parameters
-        * 10-Fold cross-validation, grid search for optimal parameters
-        * 10-Fold cross-validation, bag best grid search result
-    b. Random Forest
-        * Original dataset split, original parameters
-        * 10-Fold cross-validation, original parameters
-        * 10-Fold cross-validation, grid search for optimal parameters
-2. Support Vector Machine Exploration
-    a. SVC: RBF Kernel
-        * original dataset split
-        * 10-fold cross validation
-        * 10-fold cross validation, grid search
-        * bag best result
-    b. SVC: Polynomial Kernel
-        * original dataset split
-        * 10-fold cross validation
-        * 10-fold cross validation, grid search
-        * bag best result
-    c. LinearSVC
-        * original dataset split
-        * 10-fold cross validation
-        * 10-fold cross validation, grid search
-        * bag best result
-
-    d. Examine support vectors
-3. YOLO Comparison: Using Synthetic Data
-    a. Logistic regression with:
-        * original dataset split, 
-        * grid search optimal parameters
-            > reuse part 1 optimal parameters
-    b. Random forest with:
-        * original dataset split, 
-        * grid search optimal parameters
-            > reuse part 1 optimal parameters
-    c. SVM - best performing
-        * original dataset split, 
-        * grid search optimal parameters
-            > reuse part 2 optimal parameters
-    d. Statistical comparison
-4. Other Experiments
-    a. Feature Importance Comparison
-        * SVMs
-        * Logistic regression
-        * Random forest
-    b. Comparing with sets including demographic data
-    c. Comparing with sets sourced from study 1
+1. **Comparative Analysis: Classical Models**<br>
+ <code>**Log Reg</code> <code>Random Forest</code>**<br>
+      * Original 70:30 split with original parameters
+      * 10-Fold cross-validation with original parameters
+      * 10-Fold CV with grid search-optimized parameters
+      * <code>**LogReg Only</code>:** 10-Fold CV + bag grid search-optimized model
+2. **Support Vector Machine Exploration**<br>
+ <code>**SVM(RBF)</code> <code>SVM(polynomial)</code> <code>LinearSVM</code>**<br>
+   * Original 70:30 split
+   * 10-fold cross validation
+   * 10-fold CV + grid search-optimized parameters
+   * bag models with optimized parameters
+   * Examine support vectors
+3. **YOLO Comparison: Using Synthetic Data**<br>
+ <code>**SVM</code> <code>Log Reg</code> <code>Random Forest</code>**<br>
+   * original dataset split
+   * grid search optimal parameters
+   * Statistical comparison
+4. **Other Experiments**
+    * Feature importance comparison<br>
+<code>**SVM</code> <code>Log Reg</code> <code>Random Forest</code>**<br>
+    * Comparing with sets that include demographic data
+    * Comparing with sets sourced from [study 1](#1-kovtun-as-averina-ov-angelova-iy-et-al-alterations-of-the-composition-and-neurometabolic-profile-of-human-gut-microbiota-in-major-depressive-disorder-biomedicines-2022109-2162-published-2022-sep-2-httpsdoiorg103390biomedicines10092162)
 
 
 ## Foundational Works
@@ -88,5 +62,3 @@ These two studies form the foundation for my project:
 - Attempted to predict depression using models trained on the _metagenomic signatures_ collected above
 - Tested logistic regression, random forest, and YOLOv8 CNN
 <br>
-
-
