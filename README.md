@@ -21,8 +21,8 @@ Python scripts/ml_interface.py
 ## Project Aims
 
 - Determine if logistic regression or random forest models can be more performant than was reported in [study #2](#2-angelova-iy-kovtun-as-averina-ov-koshenko-ta-danilenko-vn-unveiling-the-connection-between-microbiota-and-depressive-disorder-through-machine-learning-international-journal-of-molecular-sciences-2023-242216459-httpsdoiorg103390ijms242216459)
-- Perform some tests to determine if [study #2](#2-angelova-iy-kovtun-as-averina-ov-koshenko-ta-danilenko-vn-unveiling-the-connection-between-microbiota-and-depressive-disorder-through-machine-learning-international-journal-of-molecular-sciences-2023-242216459-httpsdoiorg103390ijms242216459)'s YOLOv8 results are reliable
-- Determine if other classifiers (like support vector machines or k-nearest neighbor) can predict competitively on metagenomic signature data
+- Investigate whether [study #2](#2-angelova-iy-kovtun-as-averina-ov-koshenko-ta-danilenko-vn-unveiling-the-connection-between-microbiota-and-depressive-disorder-through-machine-learning-international-journal-of-molecular-sciences-2023-242216459-httpsdoiorg103390ijms242216459)'s YOLOv8 results are reliable
+- Find out if other classifiers (like support vector machines or k-nearest neighbor) can predict competitively on metagenomic signature data
 - Compare how these classifiers define their respective decision boundaries
 
 
@@ -48,8 +48,8 @@ Python scripts/ml_interface.py
 4. **Other Experiments**
     * Feature importance comparison<br>
 **[ <code>SVM</code> <code>Log Reg</code> <code>Random Forest</code> ]**<br>
-    * Comparing with sets that include demographic data
-    * Comparing with sets sourced from [study 1](#1-kovtun-as-averina-ov-angelova-iy-et-al-alterations-of-the-composition-and-neurometabolic-profile-of-human-gut-microbiota-in-major-depressive-disorder-biomedicines-2022109-2162-published-2022-sep-2-httpsdoiorg103390biomedicines10092162)
+    * Comparing with datasets that include demographic data
+    * Comparing with datasets sourced from [study 1](#1-kovtun-as-averina-ov-angelova-iy-et-al-alterations-of-the-composition-and-neurometabolic-profile-of-human-gut-microbiota-in-major-depressive-disorder-biomedicines-2022109-2162-published-2022-sep-2-httpsdoiorg103390biomedicines10092162)
 
 
 ## Foundational Works

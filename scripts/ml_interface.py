@@ -318,13 +318,15 @@ class MLInterface:
             self.write_to_result_log(results, '10-Fold Cross Validation & Bagged Grid Search Best Parameters')
             self.direct_plot_results(results, f'Bagged {model_name} 10-Fold CV & Grid Search Parameters')
             
-            # TODO:
-            # examine support vectors
+
 
             self.dump_result_log()
 
+    def perform_experiment_2b(self): #support vector analysis
+        pass
+
     def perform_experiment_3(self):
-        self.start_new_result_log(f'YOLO Comparison- Training Classical Models on Synthetic Data')
+        self.start_new_result_log(f'YOLO Comparison- Training Our Models on Synthetic Data')
         self.load_experiment_set(2,'yolo')
         for model in ['lg', 'rf', 'SVC_rbf', 'SVC_poly', 'LinearSVC']:
             self.select_model(model)
@@ -335,8 +337,15 @@ class MLInterface:
             result_title = f'{model_name} Trained on Yolo Synthetic Dataset'
             self.write_to_result_log(results, result_title)
             self.direct_plot_results(results, result_title)
+            if 'rbf' in model_name:
+                support_vectors=self.model.named_steps['clf'].support_vectors_
+                support_indices=self.model.named_steps['clf'].support_
+                support_vector_labels=self.data['train']['Y'].iloc[support_indices]
+                self.examine_support_vectors(support_vectors, support_vector_labels, model_name)
         self.dump_result_log()
         # perform some kind of statistical analysis after this
+
+
 
     # ============================
     # Plotting Utilities, Reporting
@@ -366,7 +375,7 @@ class MLInterface:
             write_name=self.filter_title_for_write(title)
             figures_dir = os.path.join(self.results_path, 'figures')
             os.makedirs(figures_dir, exist_ok=True)
-            save_path = os.path.join(figures_dir, f"{write_name}.png")
+            save_path = os.path.join(figures_dir, f"{write_name}_cm.png")
             plt.savefig(save_path)
             plt.close()
 
@@ -452,6 +461,23 @@ class MLInterface:
             'tpr': '',
             'classes': ''
         }
+
+    def examine_support_vectors(self, support_vectors, support_vector_labels, model_name):
+        from sklearn.decomposition import PCA
+        pca = PCA(n_components=2)
+        reduced_sv = pca.fit_transform(support_vectors)
+        plt.figure(figsize=(8,6))
+        plt.scatter(reduced_sv[:, 0], reduced_sv[:, 1], s=50, edgecolor='k', c=support_vector_labels, cmap='coolwarm',label='Support Vectors')
+        plt.title(f'{model_name} Support Vectors (PCA Reduced)')
+        plt.xlabel('Principal Component 1')
+        plt.ylabel('Principal Component 2')
+        plt.tight_layout()
+        plot_path = os.path.join(self.results_path, 'figures', f"{model_name}_support_vectors_pca.png")
+        plt.savefig(plot_path)
+        plt.close()
+        print(f"PCA plot of support vectors saved to {plot_path}")
+
+
 
     # ============================
     # Grid Search & Hyperparameters
@@ -542,7 +568,7 @@ class MLInterface:
 if __name__ == "__main__":
     interface=MLInterface()
     # run experiments!!!
-    interface.perform_experiment_1()
-    interface.perform_experiment_2()
+    #interface.perform_experiment_1()
+    #interface.perform_experiment_2()
     interface.perform_experiment_3()
 
