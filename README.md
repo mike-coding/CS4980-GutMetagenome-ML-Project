@@ -5,14 +5,16 @@ Training classification models on human gut metagenomic signatures
 ADD: Instructions for building datasets, running experiments, etc
 
 ### Dependencies
-This project was developed in Python 3.11.0.
-To run the scripts in this repository, you'll want to make sure you've installed Python and the modules listed below. This can be accomplished by running the following through your command line:
+This project was developed in Python 3.11.0.<br>
+From the project root folder, run the following through your command line to install all dependencies:
 ```
-pip install pandas
-pip install scikit-learn
-pip install matplotlib
-pip install seaborn
+pip install -r requirements.txt
 ```
+From project root, you can execute this to start running experiments:
+```
+Python scripts/ml_interface.py
+```
+
 
 ## Project Aims
 
