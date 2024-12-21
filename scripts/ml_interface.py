@@ -36,7 +36,8 @@ class MLInterface:
     def __init__(self, target_column: str = 'PwD'):
         self.target_column = target_column
         self.data: Dict[str, Dict[str, pd.DataFrame]] = {}  # e.g. {'train': {'X':..., 'Y':...}, 'test':{'X':...,'Y':...}}
-        self.current_experiment_set = None
+        self.current_data_set = None
+        self.current_experiment=None
         self.model = None
         self.dataPreprocessor=DataPreprocessor()
         self.data_path=self.dataPreprocessor.get_data_path()
@@ -63,7 +64,7 @@ class MLInterface:
             X = df.drop(self.target_column, axis=1)
             Y = df[self.target_column]
             self.data[_set] = {'X': X, 'Y': Y}
-        self.current_experiment_set = f"Study{study}_{experiment_type}"
+        self.current_data_set = f"Study{study}_{experiment_type}"
         print(f"Data loaded for study{study}/{experiment_type}. Available sets: {list(self.data.keys())}")
     
     # ============================
@@ -257,12 +258,13 @@ class MLInterface:
         self.dump_result_log()
 
     def perform_experiment_1(self):
+        self.current_experiment=1
         reset_model = lambda m: self.select_model('lg',penalty='elasticnet',solver='saga',l1_ratio=0.5) if m=='lg' else self.select_model('rf')
         for model in ['lg', 'rf']:
             reset_model(model)
             model_name=self.get_model_name()
             ## part a
-            self.start_new_result_log(f'{model_name} Comparative Analysis')
+            self.start_new_result_log(f'{model_name} Comparative Analysis', 'experiment_1')
             reset_model(model)
             self.load_experiment_set(2,'classic')
             self.train_model()
@@ -290,10 +292,11 @@ class MLInterface:
             self.dump_result_log()
 
     def perform_experiment_2(self):
+        self.current_experiment=2
         for model in [('SVC_rbf','RBF'), ('SVC_poly', 'Poly'), ('LinearSVC', 'Linear')]:
             model_name = model[0]
             kernel = model[1]
-            self.start_new_result_log(f'Support Vector Machine ({kernel}) Performance On Metagenomic Signature Data')
+            self.start_new_result_log(f'Support Vector Machine ({kernel}) Performance On Metagenomic Signature Data', 'experiment_2')
             self.select_model(model_name)
 
             ## default params, default split
@@ -325,7 +328,8 @@ class MLInterface:
             self.dump_result_log()
 
     def perform_experiment_3(self):
-        self.start_new_result_log(f'YOLO Comparison- Training Our Models on Synthetic Data')
+        self.current_experiment=3
+        self.start_new_result_log(f'YOLO Comparison- Training Our Models on Synthetic Data', 'experiment_3')
         self.load_experiment_set(2,'yolo')
         for model in ['lg', 'rf', 'SVC_rbf', 'SVC_poly', 'LinearSVC']:
             self.select_model(model)
@@ -339,10 +343,11 @@ class MLInterface:
         self.dump_result_log()
 
     def perform_experiment_4(self):
-        self.start_new_result_log(f'Feature Importance Comparative Analysis: Logistic Regression, Random Forest, SVM(RBF), SVM(Linear)')
+        self.current_experiment=4
         self.load_experiment_set()
         feature_names = self.data['full']['X'].columns
         # logistic regression
+        self.start_new_result_log(f'Feature Importances- Logistic Regression', 'experiment_4')
         self.select_model('lg')
         self.train_model('full')
         # get coefficients
@@ -350,31 +355,44 @@ class MLInterface:
         intercepts = self.model.intercept_
         coefficient_series = pd.Series(coefficients, index=feature_names).sort_values(ascending=False).to_string()
         intercept_series = pd.Series(intercepts, index=['Intercept']).sort_values(ascending=False).to_string()
-        print(f'{coefficient_series}\n\n{intercept_series}')
+        self.write_string_to_result_log(coefficient_series)
+        self.write_string_to_result_log(intercept_series)
+        self.dump_result_log()
 
         # random forest
+        self.start_new_result_log(f'Feature Importances- Random Forest', 'experiment_4')
         self.select_model('rf')
         self.train_model('full')
         feature_importances = self.model.feature_importances_
         feature_importances_series = pd.Series(feature_importances, index=feature_names).sort_values(ascending=False)
         output_file = os.path.join(self.results_path, f"rf_importances_test.txt")
         string_importances = feature_importances_series.to_string()
-        print(string_importances)
+        self.write_string_to_result_log(string_importances)
+        self.dump_result_log()
 
         #SVM(RBF)
+        self.start_new_result_log(f'Feature Importances- SVM_RBF', 'experiment_4')
         self.select_model('SVC_rbf')
         self.train_model('full')
         importances = permutation_importance(self.model, self.data['full']['X'],self.data['full']['Y'], n_repeats=30, random_state=self.random_state)
         importances_series = pd.Series(importances.importances_mean, index=feature_names).sort_values(ascending=False).to_string()
-        print(importances_series)
+        self.write_string_to_result_log(importances_series)
+        self.dump_result_log()
 
         #SVM(Linear)
+        self.start_new_result_log(f'Feature Importances- SVM_Linear', 'experiment_4')
         self.select_model('LinearSVC')
         self.train_model('full')
         importances = permutation_importance(self.model, self.data['full']['X'],self.data['full']['Y'], n_repeats=30, random_state=self.random_state)
         importances_series = pd.Series(importances.importances_mean, index=feature_names).sort_values(ascending=False).to_string()
-        print(importances_series)
+        self.write_string_to_result_log(importances_series)
+        self.dump_result_log()
 
+    def run_all_experiments(self):
+        interface.perform_experiment_1()
+        interface.perform_experiment_2()
+        interface.perform_experiment_3()
+        interface.perform_experiment_4()
 
     # ============================
     # Plotting Utilities, Reporting
@@ -401,10 +419,14 @@ class MLInterface:
         if not direct_write:
             plt.show()
         else:
+            target_path = self.results_path
+            if self.current_experiment:
+                sub_dir = f'experiment_{self.current_experiment}'
+                target_path = os.path.join(target_path, sub_dir)
             write_name=self.filter_title_for_write(title)
-            figures_dir = os.path.join(self.results_path, 'figures')
+            figures_dir = os.path.join(target_path, 'figures')
             os.makedirs(figures_dir, exist_ok=True)
-            save_path = os.path.join(figures_dir, f"{write_name}_cm.png")
+            save_path = os.path.join(figures_dir, f"{write_name}.png")
             plt.savefig(save_path)
             plt.close()
 
@@ -422,8 +444,12 @@ class MLInterface:
         if not direct_write:
             plt.show()
         else:
+            target_path = self.results_path
+            if self.current_experiment:
+                sub_dir = f'experiment_{self.current_experiment}'
+                target_path = os.path.join(target_path, sub_dir)
             write_name=self.filter_title_for_write(title)
-            figures_dir = os.path.join(self.results_path, 'figures')
+            figures_dir = os.path.join(target_path, 'figures')
             os.makedirs(figures_dir, exist_ok=True)
             save_path = os.path.join(figures_dir, f"{write_name}.png")
             plt.savefig(save_path)
@@ -448,7 +474,7 @@ class MLInterface:
             self.plot_confusion_matrix(
                 cm=cm,
                 classes=classes,
-                title=f'{title}',
+                title=f'{title} CM',
                 direct_write=True
             )
 
@@ -459,26 +485,35 @@ class MLInterface:
         write_name=write_name.replace('Original', 'OG')
         write_name=write_name.replace('Grid Search Best', 'gridSearch')
         write_name=write_name.replace('Parameters','params')
+        write_name=write_name.strip()
         write_name=write_name.replace(' ','_')
         return write_name
 
-    def start_new_result_log(self,title):
-        self.result_log={'title':'','body':''}
+    def start_new_result_log(self,title, sub_dir=''):
+        self.result_log={'title':'','body':'', 'sub_dir':sub_dir}
         self.result_log['title']=title
 
     def write_to_result_log(self, results, subTitle):
         self.result_log['body'] = ''.join([self.result_log['body'], f"Experiment: {subTitle}\n--------------------------------------------------------\n", f'Accuracy: {str(results["accuracy"])}\n', f'ROC_AUC: {str(results["roc_auc"])}\n\n', f'{results["cr"]}\n', f'Confusion matrix:\n{str(results["cm"])}\n\n\n\n'])
+
+    def write_string_to_result_log(self, string, subTitle=''):
+        self.result_log['body'] = ''.join([subTitle, self.result_log['body'], string])
 
     def dump_result_log(self):
         name = self.result_log['title']
         resultLog = self.result_log['body']
         resultLog= f'{name}\n========================================================\n========================================================\n\n'+resultLog
         output_file = os.path.join(self.results_path, f"{name}.txt")
+        if self.current_experiment:
+            sub_dir = f'experiment_{self.current_experiment}'
+            sub_dir_path = os.path.join(self.results_path, sub_dir)
+            os.makedirs(sub_dir_path, exist_ok=True)
+            output_file = os.path.join(sub_dir_path, f"{name}.txt")
         with open(output_file, 'w') as f:
             f.write(resultLog)
         print(resultLog[:-3])
         print(f"Results saved to {output_file}")
-        self.result_log={'title':'','body':''}
+        self.result_log={'title':'','body':'', 'sub_dir':''}
 
     def _generate_blank_results(self):
         return {
@@ -562,8 +597,10 @@ class MLInterface:
             ax.set_xlabel('Principal Component 1')
             ax.set_ylabel('Principal Component 2')
             plt.tight_layout()
-            plot_path = os.path.join(self.results_path, 'figures', f"SVM ({kernel_name})_support_vectors_pca.png")
-            plt.savefig(plot_path)
+            plot_path = os.path.join(self.results_path, 'figures')
+            os.makedirs(plot_path, exist_ok=True)
+            final_path = os.path.join(plot_path, f"SVM ({kernel_name})_support_vectors_pca.png")
+            plt.savefig(final_path)
             plt.close()
             print(f"PCA plot of support vectors saved to {plot_path}")
 
@@ -673,9 +710,6 @@ class MLInterface:
 if __name__ == "__main__":
     interface=MLInterface()
     # run experiments!!!
-    #interface.perform_experiment_1()
-    #interface.perform_experiment_2()
-    #interface.perform_experiment_3()
-    interface.perform_experiment_4()
-    #interface.plot_SVM_decision_boundaries()
+    #interface.run_all_experiments()
+    interface.plot_SVM_decision_boundaries()
 
