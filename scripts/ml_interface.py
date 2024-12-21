@@ -368,20 +368,13 @@ class MLInterface:
         importances_series = pd.Series(importances.importances_mean, index=feature_names).sort_values(ascending=False).to_string()
         print(importances_series)
 
-        # too much hassle to extract these from the calibrated classifier crossfold validation for LinearSVC. 
-        # I'm still not convinced calibrated classifier even saves the coefficients at all.
-        # oh well, we've got RBF, so that's good enough.
-        '''
         #SVM(Linear)
         self.select_model('LinearSVC')
         self.train_model('full')
-        clf = self.model.named_steps['clf'].calibrated_classifiers_[0]
-        coefficients = clf.coef_[0]
-        intercepts = clf.intercept_
-        coefficient_series = pd.Series(coefficients, index=feature_names).sort_values(ascending=False).to_string()
-        intercept_series = pd.Series(intercepts, index=['Intercept']).sort_values(ascending=False).to_string()
-        print(f'{coefficient_series}\n\n{intercept_series}')
-        '''
+        importances = permutation_importance(self.model, self.data['full']['X'],self.data['full']['Y'], n_repeats=30, random_state=self.random_state)
+        importances_series = pd.Series(importances.importances_mean, index=feature_names).sort_values(ascending=False).to_string()
+        print(importances_series)
+
 
     # ============================
     # Plotting Utilities, Reporting
