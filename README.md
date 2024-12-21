@@ -29,7 +29,7 @@ interface.perform_experiment_2() # perform functions for part 2
 interface.perform_experiment_3() # you can probably guess what this one does
 interface.perform_experiment_4()
 
-interface.plot_SVM_decision_boundary() # Generate SVM decision boundary figures for RBF & polynomial kernels
+interface.plot_SVM_decision_boundary() # Make SVM decision boundary figures for RBF & poly kernels
 ```
 
 ### Build Your Own Experiment
