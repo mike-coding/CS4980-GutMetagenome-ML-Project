@@ -257,7 +257,7 @@ class MLInterface:
             self.write_to_result_log(results, experiment_type)
         self.dump_result_log()
 
-    def perform_experiment_1(self):
+    def run_experiment_1(self):
         self.current_experiment=1
         reset_model = lambda m: self.select_model('lg',penalty='elasticnet',solver='saga',l1_ratio=0.5) if m=='lg' else self.select_model('rf')
         for model in ['lg', 'rf']:
@@ -291,7 +291,7 @@ class MLInterface:
                 self.direct_plot_results(results, f'Bagged {model_name} 10-Fold CV & Grid Search Parameters')
             self.dump_result_log()
 
-    def perform_experiment_2(self):
+    def run_experiment_2(self):
         self.current_experiment=2
         for model in [('SVC_rbf','RBF'), ('SVC_poly', 'Poly'), ('LinearSVC', 'Linear')]:
             model_name = model[0]
@@ -327,7 +327,7 @@ class MLInterface:
 
             self.dump_result_log()
 
-    def perform_experiment_3(self):
+    def run_experiment_3(self):
         self.current_experiment=3
         self.start_new_result_log(f'YOLO Comparison- Training Our Models on Synthetic Data', 'experiment_3')
         self.load_experiment_set(2,'yolo')
@@ -342,7 +342,7 @@ class MLInterface:
             self.direct_plot_results(results, result_title)
         self.dump_result_log()
 
-    def perform_experiment_4(self):
+    def run_experiment_4(self):
         self.current_experiment=4
         self.load_experiment_set()
         feature_names = self.data['full']['X'].columns
@@ -389,10 +389,10 @@ class MLInterface:
         self.dump_result_log()
 
     def run_all_experiments(self):
-        interface.perform_experiment_1()
-        interface.perform_experiment_2()
-        interface.perform_experiment_3()
-        interface.perform_experiment_4()
+        self.run_experiment_1()
+        self.run_experiment_2()
+        self.run_experiment_3()
+        self.run_experiment_4()
 
     # ============================
     # Plotting Utilities, Reporting
@@ -710,6 +710,6 @@ class MLInterface:
 if __name__ == "__main__":
     interface=MLInterface()
     # run experiments!!!
-    #interface.run_all_experiments()
+    interface.run_all_experiments()
     interface.plot_SVM_decision_boundaries()
 
