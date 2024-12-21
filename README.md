@@ -1,5 +1,5 @@
 # CS4980-GutMetagenome-ML-Project
-Training & evaluating classification models on human gut metagenomic signature data 
+This project investigates methods for training & evaluating classification models on human gut metagenomic signature data.
 
 ## Testing This Project
 
@@ -15,7 +15,7 @@ From the project root, you can execute this in the terminal to start running exp
 ```
 Python scripts/ml_interface.py
 ```
-The above will run study design experiments 1-4 by default. 
+The above will prompt the user to run [study design experiments 1-4](#study-design) by default.<br> 
 To selectively run specific experiments from the study design, you can execute the following in the terminal, assuming the current working directory is the project root:
 ```
 cd scripts
@@ -33,7 +33,7 @@ interface.plot_SVM_decision_boundary() # Make SVM decision boundary figures for 
 ```
 
 ### Build Your Own Experiment
-I have not directly implemented functions to perform the experiments outlined in section 5: Other Experiments.<br>
+I have not directly implemented functions to perform the experiments outlined in [section 5: Other Experiments](#study-design).<br>
 However, you can still perform these tests (and many others) through MLInterface.<br> 
 Here's an example of how to train and test a logistic regression model on a dataset with demographic data (sex, age) included:
 ```
