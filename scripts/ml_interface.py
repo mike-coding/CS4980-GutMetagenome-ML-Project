@@ -17,7 +17,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, roc_curve, auc
 from sklearn.base import clone
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.inspection import DecisionBoundaryDisplay
+from sklearn.inspection import DecisionBoundaryDisplay, permutation_importance
 from sklearn.decomposition import PCA
 
 from csv_preprocessor import DataPreprocessor
@@ -339,7 +339,49 @@ class MLInterface:
         self.dump_result_log()
 
     def perform_experiment_4(self):
-        pass
+        self.start_new_result_log(f'Feature Importance Comparative Analysis: Logistic Regression, Random Forest, SVM(RBF), SVM(Linear)')
+        self.load_experiment_set()
+        feature_names = self.data['full']['X'].columns
+        # logistic regression
+        self.select_model('lg')
+        self.train_model('full')
+        # get coefficients
+        coefficients = self.model.coef_[0]
+        intercepts = self.model.intercept_
+        coefficient_series = pd.Series(coefficients, index=feature_names).sort_values(ascending=False).to_string()
+        intercept_series = pd.Series(intercepts, index=['Intercept']).sort_values(ascending=False).to_string()
+        print(f'{coefficient_series}\n\n{intercept_series}')
+
+        # random forest
+        self.select_model('rf')
+        self.train_model('full')
+        feature_importances = self.model.feature_importances_
+        feature_importances_series = pd.Series(feature_importances, index=feature_names).sort_values(ascending=False)
+        output_file = os.path.join(self.results_path, f"rf_importances_test.txt")
+        string_importances = feature_importances_series.to_string()
+        print(string_importances)
+
+        #SVM(RBF)
+        self.select_model('SVC_rbf')
+        self.train_model('full')
+        importances = permutation_importance(self.model, self.data['full']['X'],self.data['full']['Y'], n_repeats=30, random_state=self.random_state)
+        importances_series = pd.Series(importances.importances_mean, index=feature_names).sort_values(ascending=False).to_string()
+        print(importances_series)
+
+        # too much hassle to extract these from the calibrated classifier crossfold validation for LinearSVC. 
+        # I'm still not convinced calibrated classifier even saves the coefficients at all.
+        # oh well, we've got RBF, so that's good enough.
+        '''
+        #SVM(Linear)
+        self.select_model('LinearSVC')
+        self.train_model('full')
+        clf = self.model.named_steps['clf'].calibrated_classifiers_[0]
+        coefficients = clf.coef_[0]
+        intercepts = clf.intercept_
+        coefficient_series = pd.Series(coefficients, index=feature_names).sort_values(ascending=False).to_string()
+        intercept_series = pd.Series(intercepts, index=['Intercept']).sort_values(ascending=False).to_string()
+        print(f'{coefficient_series}\n\n{intercept_series}')
+        '''
 
     # ============================
     # Plotting Utilities, Reporting
@@ -640,6 +682,7 @@ if __name__ == "__main__":
     # run experiments!!!
     #interface.perform_experiment_1()
     #interface.perform_experiment_2()
-    interface.perform_experiment_3()
-    interface.plot_SVM_decision_boundaries()
+    #interface.perform_experiment_3()
+    interface.perform_experiment_4()
+    #interface.plot_SVM_decision_boundaries()
 
