@@ -597,7 +597,7 @@ class MLInterface:
             ax.set_xlabel('Principal Component 1')
             ax.set_ylabel('Principal Component 2')
             plt.tight_layout()
-            plot_path = os.path.join(self.results_path, 'figures')
+            plot_path = os.path.join(self.results_path, 'SVM_decision_boundary_figures')
             os.makedirs(plot_path, exist_ok=True)
             final_path = os.path.join(plot_path, f"SVM ({kernel_name})_support_vectors_pca.png")
             plt.savefig(final_path)
@@ -709,13 +709,18 @@ class MLInterface:
 
 if __name__ == "__main__":
     interface=MLInterface()
-    # run experiments!!!
-    print('Interface will run all experiments.')
-    print('The script will first run some pre-processing on the datasets.')
-    print('To run everything, the script will take a few minutes.')
+    print('CS:4980 GUT METAGENOME ML PROJECT')
+    print('Preparing to run all experiments (1-4).')
+    print('')
+    print('[WARNING]:')
+    print('This program may first need to perform pre-processing on the datasets.')
+    print('The full experimental pipeline may take up to 15 minutes to run.')
+    print('')
     user_choice = input('Proceed? [Y/N]\n')
     if 'y' in user_choice.lower():
         print('Running all experiments, please wait.')
         interface.run_all_experiments()
         interface.plot_SVM_decision_boundaries()
+    else:
+        print('Exiting.')
 
