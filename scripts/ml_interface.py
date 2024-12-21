@@ -710,6 +710,12 @@ class MLInterface:
 if __name__ == "__main__":
     interface=MLInterface()
     # run experiments!!!
-    interface.run_all_experiments()
-    interface.plot_SVM_decision_boundaries()
+    print('Interface will run all experiments.')
+    print('The script will first run some pre-processing on the datasets.')
+    print('To run everything, the script will take a few minutes.')
+    user_choice = input('Proceed? [Y/N]\n')
+    if 'y' in user_choice.lower():
+        print('Running all experiments, please wait.')
+        interface.run_all_experiments()
+        interface.plot_SVM_decision_boundaries()
 
