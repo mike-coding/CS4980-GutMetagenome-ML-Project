@@ -17,6 +17,8 @@ from sklearn.pipeline import Pipeline
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, roc_curve, auc
 from sklearn.base import clone
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.inspection import DecisionBoundaryDisplay
+from sklearn.decomposition import PCA
 
 from csv_preprocessor import DataPreprocessor
 from model_hyperparameters import HyperparameterConfig
@@ -34,10 +36,11 @@ class MLInterface:
     def __init__(self, target_column: str = 'PwD'):
         self.target_column = target_column
         self.data: Dict[str, Dict[str, pd.DataFrame]] = {}  # e.g. {'train': {'X':..., 'Y':...}, 'test':{'X':...,'Y':...}}
+        self.current_experiment_set = None
         self.model = None
         self.dataPreprocessor=DataPreprocessor()
-        self.path=self.dataPreprocessor.get_data_path()
-        self.results_path = os.path.join(self.path,'..', 'results')
+        self.data_path=self.dataPreprocessor.get_data_path()
+        self.results_path = os.path.join(self.data_path,'..', 'results')
         self.random_state=42
         self.result_log={'title':'','body':''}
 
@@ -60,6 +63,7 @@ class MLInterface:
             X = df.drop(self.target_column, axis=1)
             Y = df[self.target_column]
             self.data[_set] = {'X': X, 'Y': Y}
+        self.current_experiment_set = f"Study{study}_{experiment_type}"
         print(f"Data loaded for study{study}/{experiment_type}. Available sets: {list(self.data.keys())}")
     
     # ============================
@@ -120,7 +124,7 @@ class MLInterface:
     # ============================
     # Training
     # ============================
-    def train_model(self, dataset: str = 'train'):
+    def train_model(self, dataset: str = 'train', use_reduced_x=False):
         """
         Train the currently selected model on the specified dataset part ('train' or 'full').
         """
@@ -129,7 +133,7 @@ class MLInterface:
         if dataset not in self.data:
             raise ValueError(f"No {dataset} data loaded.")
 
-        X = self.data[dataset]['X']
+        X = self.data[dataset][f'X{"_reduced" if use_reduced_x else ""}']
         Y = self.data[dataset]['Y']
         self.model.fit(X, Y)
         print(f"Model trained on {dataset} set with {X.shape[0]} samples and {X.shape[1]} features.")
@@ -317,13 +321,8 @@ class MLInterface:
             results = self.evaluate_model(method='cv',suppress_report=True)
             self.write_to_result_log(results, '10-Fold Cross Validation & Bagged Grid Search Best Parameters')
             self.direct_plot_results(results, f'Bagged {model_name} 10-Fold CV & Grid Search Parameters')
-            
-
 
             self.dump_result_log()
-
-    def perform_experiment_2b(self): #support vector analysis
-        pass
 
     def perform_experiment_3(self):
         self.start_new_result_log(f'YOLO Comparison- Training Our Models on Synthetic Data')
@@ -337,15 +336,10 @@ class MLInterface:
             result_title = f'{model_name} Trained on Yolo Synthetic Dataset'
             self.write_to_result_log(results, result_title)
             self.direct_plot_results(results, result_title)
-            if 'rbf' in model_name:
-                support_vectors=self.model.named_steps['clf'].support_vectors_
-                support_indices=self.model.named_steps['clf'].support_
-                support_vector_labels=self.data['train']['Y'].iloc[support_indices]
-                self.examine_support_vectors(support_vectors, support_vector_labels, model_name)
         self.dump_result_log()
-        # perform some kind of statistical analysis after this
 
-
+    def perform_experiment_4(self):
+        pass
 
     # ============================
     # Plotting Utilities, Reporting
@@ -462,22 +456,98 @@ class MLInterface:
             'classes': ''
         }
 
-    def examine_support_vectors(self, support_vectors, support_vector_labels, model_name):
-        from sklearn.decomposition import PCA
-        pca = PCA(n_components=2)
-        reduced_sv = pca.fit_transform(support_vectors)
-        plt.figure(figsize=(8,6))
-        plt.scatter(reduced_sv[:, 0], reduced_sv[:, 1], s=50, edgecolor='k', c=support_vector_labels, cmap='coolwarm',label='Support Vectors')
-        plt.title(f'{model_name} Support Vectors (PCA Reduced)')
-        plt.xlabel('Principal Component 1')
-        plt.ylabel('Principal Component 2')
-        plt.tight_layout()
-        plot_path = os.path.join(self.results_path, 'figures', f"{model_name}_support_vectors_pca.png")
-        plt.savefig(plot_path)
-        plt.close()
-        print(f"PCA plot of support vectors saved to {plot_path}")
+    def plot_SVM_decision_boundaries(self):
+        self.load_experiment_set()
+        for kernel_name in ['RBF', 'poly']:
+            self.select_model(f'SVC_{kernel_name.lower()}')
+            self.load_grid_search_parameters()
+            pca = PCA(n_components=2, random_state=self.random_state)
+            self.data['train']['X_reduced'] = pca.fit_transform(self.data['train']['X'].values)
+            self.train_model(use_reduced_x=True)
 
+            fig, ax = plt.subplots(figsize=(6, 4))
 
+            #window buffers are hardcoded for now- bad
+            x_min, x_max = self.data['train']['X_reduced'][:, 0].min() - 1, self.data['train']['X_reduced'][:, 0].max() + 1
+            y_min, y_max = self.data['train']['X_reduced'][:, 1].min() - 1, self.data['train']['X_reduced'][:, 1].max() + 1
+            ax.set_xlim(x_min, x_max)
+            ax.set_ylim(y_min, y_max)
+
+            # color mesh
+            DecisionBoundaryDisplay.from_estimator(
+                self.model,
+                self.data['train']['X_reduced'],
+                response_method="predict",
+                plot_method="pcolormesh",
+                alpha=0.3,
+                cmap='cool',
+                ax=ax
+            )
+            # boundary lines
+            DecisionBoundaryDisplay.from_estimator(
+                self.model,
+                self.data['train']['X_reduced'],
+                response_method="decision_function",
+                plot_method="contour",
+                levels=[-1, 0, 1],
+                colors=["k", "k", "k"],
+                linestyles=["--", "-", "--"],
+                ax=ax
+            )
+
+            support_vectors_scaled = self.model.named_steps['clf'].support_vectors_
+            support_vectors = self.model.named_steps['scaler'].inverse_transform(support_vectors_scaled)
+            # support vectors
+            ax.scatter(
+                support_vectors[:, 0],
+                support_vectors[:, 1],
+                s=100,
+                facecolors="none",
+                edgecolors="k",
+            )
+            # all points
+            scatter = ax.scatter(
+                self.data['train']['X_reduced'][:, 0],
+                self.data['train']['X_reduced'][:, 1],
+                c=self.data['train']['Y'].values,
+                edgecolors='k',
+                cmap='cool',
+                s=30,
+            )
+
+            handles, labels = scatter.legend_elements()
+            ax.legend(
+                handles=[handles[0], handles[1], plt.Line2D([], [], marker='o', linestyle='', 
+                                                            markeredgecolor='k', markerfacecolor='none', 
+                                                            markersize=10, label='Support Vectors')],
+                labels=['HC', 'PwD'],
+                loc="upper right"
+            )
+            ax.set_title(f'SVM({kernel_name}) Support Vectors (PCA Reduced)', wrap=True)
+            ax.set_xlabel('Principal Component 1')
+            ax.set_ylabel('Principal Component 2')
+            plt.tight_layout()
+            plot_path = os.path.join(self.results_path, 'figures', f"SVM ({kernel_name})_support_vectors_pca.png")
+            plt.savefig(plot_path)
+            plt.close()
+            print(f"PCA plot of support vectors saved to {plot_path}")
+
+    def report_support_vectors(self, dataSet):
+        import numpy as np
+        vector_doc=''
+        support_indices=self.model.named_steps['clf'].support_
+        support_vector_labels=self.data[dataSet]['Y'].iloc[support_indices]
+        support_vectors_scaled = self.model.named_steps['clf'].support_vectors_
+        support_vectors = self.model.named_steps['scaler'].inverse_transform(support_vectors_scaled)
+        vector_magnitudes = np.linalg.norm(support_vectors, axis=1)
+        labeled_vectors = list(zip(support_vector_labels, vector_magnitudes))
+        labeled_vectors_sorted = sorted(labeled_vectors, key=lambda x: x[1], reverse=True)
+
+        output_file = os.path.join(self.results_path, f"SVC_rbf_SupportVectors.txt")
+
+        with open(output_file, 'w') as f:
+            for label, magnitude in labeled_vectors_sorted:
+                f.write(f"{label}: {magnitude:.4f}\n")
 
     # ============================
     # Grid Search & Hyperparameters
@@ -571,4 +641,5 @@ if __name__ == "__main__":
     #interface.perform_experiment_1()
     #interface.perform_experiment_2()
     interface.perform_experiment_3()
+    interface.plot_SVM_decision_boundaries()
 
