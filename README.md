@@ -66,7 +66,7 @@ interface.dump_result_log()
       * 10-Fold cross-validation with original parameters
       * 10-Fold CV with grid search-optimized parameters
       * <code>**LogReg Only</code>:** 10-Fold CV + bag grid search-optimized model
-2. **Support Vector Machine Exploration**<br>
+2. **Support Vector Machine (SVM) Performance on Metagenomic Signature Data**<br>
  **[ <code>SVM(RBF)</code> <code>SVM(polynomial)</code> <code>LinearSVM</code> ]**<br>
    * Original 70:30 split
    * 10-fold cross validation
