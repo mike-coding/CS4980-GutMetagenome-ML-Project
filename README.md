@@ -1,5 +1,13 @@
-# CS4980-GutMetagenome-ML-Project
-This project investigates methods for training & evaluating classification models on human gut metagenomic signature data.
+# Revisiting the Connection Between Gut Microbiota and Depressive Disorder: An Evaluation and Reproduction of Machine Learning Approaches
+_Michael Wurth, CS:4980 at the University of Iowa_
+
+## Abstract
+Research into the human gut microbiome has increasingly revealed associations with various psychiatric disorders, suggesting a link between microbial composition and mental health outcomes. Angelova et al.² investigated these associations by training machine learning classifiers on metagenomic sequence read data, finding that the YOLOv8 (You Only Look Once) convolutional neural network (CNN) was most effective in classifying depressive states based on gut microbiome composition.
+Our study aims to revisit and extend Angelova et al.²'s findings by evaluating the performance of logistic regression, random forest, and support vector machines (SVMs). Additionally, we assess whether these models can achieve performance comparable to YOLOv8 under similar data conditions and parameter optimization.
+Using the datasets from the reference study, we re-examined model efficacy before and after parameter tuning and cross-validation. Logistic regression notably outperformed previous reports, achieving a cross-validated accuracy of 0.77 and a ROC AUC of 0.81. On their synthetically expanded dataset, random forest achieved near-perfect classification. SVM models attained perfect accuracy on this dataset, matching YOLOv8's performance as reported by Angelova et al.² These findings suggest that simpler models can achieve competitive results on metagenomic data when conditions are controlled and classifier optimization is appropriately applied.
+
+
+**Key Words: [Depression, gut microbiome, machine learning, logistic regression, psychiatric disorder]**
 
 ## Testing This Project
 
