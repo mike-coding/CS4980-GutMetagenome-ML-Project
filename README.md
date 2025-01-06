@@ -3,7 +3,7 @@ _Michael Wurth, CS:4980 at the University of Iowa_
 
 ## Abstract
 Research into the human gut microbiome has increasingly revealed associations with various psychiatric disorders, suggesting a link between microbial composition and mental health outcomes. Angelova et al.² investigated these associations by training machine learning classifiers on metagenomic sequence read data, finding that the YOLOv8 (You Only Look Once) convolutional neural network (CNN) was most effective in classifying depressive states based on gut microbiome composition.
-Our study aims to revisit and extend Angelova et al.²'s findings by evaluating the performance of logistic regression, random forest, and support vector machines (SVMs). Additionally, we assess whether these models can achieve performance comparable to YOLOv8 under similar data conditions and parameter optimization.
+Our study aims to revisit and extend the findings of Angelova et al.² by evaluating the performance of logistic regression, random forest, and support vector machines (SVMs). Additionally, we assess whether these models can achieve performance comparable to YOLOv8 under similar data conditions and parameter optimization.
 Using the datasets from the reference study, we re-examined model efficacy before and after parameter tuning and cross-validation. Logistic regression notably outperformed previous reports, achieving a cross-validated accuracy of 0.77 and a ROC AUC of 0.81. On their synthetically expanded dataset, random forest achieved near-perfect classification. SVM models attained perfect accuracy on this dataset, matching YOLOv8's performance as reported by Angelova et al.² These findings suggest that simpler models can achieve competitive results on metagenomic data when conditions are controlled and classifier optimization is appropriately applied.
 
 
@@ -73,7 +73,7 @@ interface.dump_result_log()
       * Original 70:30 split with original parameters
       * 10-Fold cross-validation with original parameters
       * 10-Fold CV with grid search-optimized parameters
-      * <code>**LogReg Only</code>:** 10-Fold CV + bag grid search-optimized model
+      * <code>**LogReg Only</code>** 10-Fold CV + bag grid search-optimized model
 2. **Support Vector Machine (SVM) Performance on Metagenomic Signature Data**<br>
  **[ <code>SVM(RBF)</code> <code>SVM(polynomial)</code> <code>LinearSVM</code> ]**<br>
    * Original 70:30 split
@@ -82,8 +82,8 @@ interface.dump_result_log()
    * bag models with optimized parameters
 3. **YOLO Comparison: Using Synthetic Data**<br>
  **[ <code>SVM</code> <code>Log Reg</code> <code>Random Forest</code> ]**<br>
-   * original dataset split
-   * grid search optimal parameters
+   * Original dataset split
+   * Grid search optimal parameters
    * Statistical comparison
 4. **Feature Importance Comparison**<br>
 **[ <code>SVM</code> <code>Log Reg</code> <code>Random Forest</code> ]**<br>
